@@ -201,6 +201,7 @@ if component['usingROS'] == True:
 						method = interface['methods'][mname]
 						cog.outl("<TABHERE>ros::Publisher pub_"+mname+";")
 			cog.outl("<TABHERE>Publisher"+nname+"(ros::NodeHandle *node)\n<TABHERE>{")
+
 			type_map = dict()
 			for type in module['types']:
 				if 'type' in type:
@@ -230,6 +231,7 @@ if component['usingROS'] == True:
 							else:
 								cog.outl("<TABHERE><TABHERE>pub_"+mname+" = node->advertise<"+module['name']+"ROS::"+p['type']+">(node->resolveName("+s+"), 1000);")
 			cog.outl("<TABHERE>}")
+
 			cog.outl("<TABHERE>~Publisher"+nname+"(){}")
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
@@ -295,6 +297,7 @@ if component['usingROS'] == True:
 			theIdsl = pool.IDSLsModule(module)
 			# idsl = IDSLParsing.fromFileIDSL(theIdsl)
 			idsl = DSLFactory().from_file(theIdsl)
+			"""
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
 					for mname in interface['methods']:
@@ -324,6 +327,7 @@ if component['usingROS'] == True:
 						methodContent = "<TABHERE>{\n<TABHERE><TABHERE>" + methodContent + "\n<TABHERE>}\n"
 						cog.outl(methodDef)
 						cog.outl(methodContent)
+			"""
 			cog.outl("};")
 ]]]
 [[[end]]]
