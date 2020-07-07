@@ -1,0 +1,79 @@
+[[[cog
+
+import sys
+sys.path.append('/opt/robocomp/python')
+
+import cog
+def A():
+	cog.out('<@@<')
+def Z():
+	cog.out('>@@>')
+def TAB():
+	cog.out('<TABHERE>')
+def SPACE(i=0):
+	s = ''
+	if i>0:
+		s = str(i)
+	cog.out('<S'+s+'>')
+
+from dsl_parsers.dsl_factory import DSLFactory
+
+includeDirectories = theIDSLPaths.split('#')
+#idsl = gimmeIDSLStruct(theIDSL, files='', includeDirectories=includeDirectories)
+idsl = DSLFactory().from_file (theIDSL)
+
+def isSrv(method):
+    returnTypeVoid = (method['return'] != 'void')
+    paramWithOut = False
+    for param in method['params']:
+        if param['decorator'] == 'out':
+            paramWithOut = True
+    return (returnTypeVoid or paramWithOut)
+
+for interface in idsl['interfaces']:
+	#if imp['type'] == 'interface':
+	for method in interface['methods']:
+		if methodName == interface['methods'][method]['name'] and 'params' in interface['methods'][method]:
+			if isSrv (interface['methods'][method]):
+				#print (interface['methods'][method]['params'])
+				for param in interface['methods'][method]['params']:
+					#print (param)
+					if param['decorator'] != 'out':
+						#for im in idsl['module']['contents']:
+						if param['type'] in ('sequence'):
+							if param['typeSequence'] in ('float','int'):
+								param['type'] = param['typeSequence'] +"32[]"
+							else:
+								param['type'] = im['typeSequence'] +"[]"
+						if param['type'] in ('float','int',):
+							param['type'] = param['type'] + "32"
+						str = param['type'] + " " + param['name']
+						#print (str)
+						cog.outl(str.replace("::", "ROS/"))
+				cog.outl("---")
+				for param in interface['methods'][method]['params']:
+					if param['decorator'] == 'out':
+						#for im in idsl['module']['contents']:
+						if param['type'] in ('sequence'):
+							if param['typeSequence'] in ('float','int'):
+								param['type'] = param['typeSequence'] +"32[]"
+							else:
+								param['type'] = im['typeSequence'] +"[]"
+						if param['type'] in ('float','int',):
+							param['type'] = param['type'] + "32"
+						str = param['type'] + " " + param['name']
+						cog.outl(str.replace("::", "ROS/"))
+				if interface['methods'][method]['return'] != 'void':
+					"""
+					if interface['methods'][method]['return'] in ('sequence'):
+						if param['typeSequence'] in ('float','int'):
+							param['type'] = param['typeSequence'] +"32[]"
+						else:
+							param['type'] = im['typeSequence'] +"[]"
+					"""
+					if interface['methods'][method]['return'] in ['float','int']:
+						interface['methods'][method]['return'] = interface['methods'][method]['return'] + "32"
+					str = interface['methods'][method]['return'] + " " + "response"
+					cog.outl(str.replace("::", "ROS/"))
+]]]
+[[[end]]]
