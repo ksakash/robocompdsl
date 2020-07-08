@@ -26,6 +26,15 @@ if component is None:
 pool = IDSLPool(theIDSLs, includeDirectories)
 rosTypes = pool.getRosTypes()
 
+def isPub(method):
+	returnTypeVoid = (method['return'] == 'void')
+	paramWithOut = False
+	moreThanOne = not (len(method['params']) == 1)
+	for param in method['params']:
+		if param['decorator'] == 'out':
+			paramWithOut = True
+			break
+	return returnTypeVoid and (not paramWithOut) and (not moreThanOne)
 
 ]]]
 [[[end]]]
@@ -170,6 +179,7 @@ if 'subscribesTo' in component:
 							# STR
 							paramStrA += delim + const + p['type'] + ' ' + ampersand + p['name']
 						cog.outl("<TABHERE>" + method['return'] + ' ' +interface['name'] + "_" + method['name'] + '(' + paramStrA + ");")
+					"""
 					else:
 						for p in method['params']:
 							# delim
@@ -196,6 +206,42 @@ if 'subscribesTo' in component:
 							cog.outl("<TABHERE>void ROS" + method['name'] + '(' + paramStrA + ");")
 						else:
 							cog.outl("<TABHERE>void " + method['name'] + '(' + paramStrA + ");")
+					"""
+
+				if not communicationIsIce(impa):
+					sub_map = dict()
+					for t in module['types']:
+						if t['type'] != 'dictionary':
+							d_type = ''
+							n = t['name'].split('::')[-1]
+							sub_map[n] = dict()
+							sub_map[n]['func_name'] = "cb_" + n
+							if '::' in t['name']:
+								d_type = t['name'].replace('::', 'ROS::')
+							else:
+								d_type = module['name'] + 'ROS::' + t['name']
+							sub_map[n]['data_type'] = d_type
+							cog.outl("<TABHERE>void cb_"+n+"(" + d_type + " ros_msg);")
+
+					for interface in module['interfaces']:
+						for method in interface['methods']:
+							m = interface['methods'][method]
+							if isPub (m):
+								p = m['params'][0]
+								p_name = m['name']
+								sub_map[p_name] = dict()
+								if p['type'] in ('float','int'):
+									sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()+"32"
+								elif p['type'] in ('uint8','uint16','uint32','uint64'):
+									sub_map[p_name]['data_type'] = "std_msgs::UInt"+p['type'].split('t')[1]+"32"
+								elif p['type'] in rosTypes:
+									sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()
+								elif '::' in p['type']:
+									sub_map[p_name]['data_type'] = p['type'].replace('::', 'ROS::')
+								else:
+									sub_map[p_name]['data_type'] = module['name'] + 'ROS::' + p['type']
+								sub_map[p_name]['func_name'] = "cb_" + p_name
+								cog.outl("<TABHERE>void cb_"+p_name+"("+sub_map[p_name]['data_type']+" ros_msg);")
 
 ]]]
 [[[end]]]

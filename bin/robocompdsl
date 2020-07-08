@@ -41,7 +41,9 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
     :return:
     """
     imported = []
+    # print ("idslFile", idslFile)
     idsl = gimmeIDSL(idslFile, files='', includeDirectories=includeDirectories)
+    # print ("idsl", idsl)
     if not os.path.exists(outputPath):
         create_directory(outputPath)
 

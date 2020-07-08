@@ -12,6 +12,16 @@ def Z():
 def TAB():
 	cog.out('<TABHERE>')
 
+def isPub(method):
+	returnTypeVoid = (method['return'] == 'void')
+	paramWithOut = False
+	moreThanOne = not (len(method['params']) == 1)
+	for param in method['params']:
+		if param['decorator'] == 'out':
+			paramWithOut = True
+			break
+	return returnTypeVoid and (not paramWithOut) and (not moreThanOne)
+
 from dsl_parsers.dsl_factory import DSLFactory
 from dsl_parsers.parsing_utils import getNameNumber, communicationIsIce, IDSLPool, isAGM1Agent,isAGM2Agent
 includeDirectories = theIDSLPaths.split('#')
@@ -195,17 +205,65 @@ if component['usingROS'] == True:
 			idsl = DSLFactory().from_file(theIdsl)
             # cog.outl("// class for rosPublisher")
 			cog.outl("class Publisher"+nname+"\n{\npublic:")
+			"""
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
 					for mname in interface['methods']:
 						method = interface['methods'][mname]
 						cog.outl("<TABHERE>ros::Publisher pub_"+mname+";")
+			"""
+
+			pub_data_map = dict()
+			cog.outl("<TABHERE>// publisher for every data types in the given interfaces")
+			for t in module['types']:
+				if t['type'] != 'dictionary':
+					cog.outl("<TABHERE>ros::Publisher pub_"+t['name'].split('::')[-1]+";")
+					pub_data_map[t['name']] = dict()
+					if '::' in t['name']:
+						pub_data_map[t['name']]['type'] = t['type'].replace('::', 'ROS::')
+						pub_data_map[t['name']]['topic'] = ''
+					else:
+						pub_data_map[t['name']]['type'] = module['name'] + 'ROS::' + t['type']
+						pub_data_map[t['name']]['topic'] = ''
+
+			for interface in module['interfaces']:
+				for method in interface['methods']:
+					m = interface['methods'][method]
+					if isPub (m):
+						p = m['params'][0]
+						p_name = m['name']
+						cog.outl("<TABHERE>ros::Publisher pub_"+p_name+";")
+						pub_data_map[p_name] = dict()
+						if p['type'] in ('float','int'):
+							pub_data_map[p_name]['type'] = "std_msgs::"+p['type'].capitalize()+"32"
+						elif p['type'] in ('uint8','uint16','uint32','uint64'):
+							pub_data_map[p_name]['type'] = "std_msgs::UInt"+p['type'].split('t')[1]+"32"
+						elif p['type'] in rosTypes:
+							pub_data_map[p_name]['type'] = "std_msgs::"+p['type'].capitalize()
+						elif '::' in p['type']:
+							pub_data_map[p_name]['type'] = p['type'].replace('::', 'ROS::')
+						else:
+							pub_data_map[p_name]['type'] = module['name'] + 'ROS::' + p['type']
+						pub_data_map[p_name]['topic'] = interface['name']
+
+			# print ("pub_data_map", pub_data_map)
+
 			cog.outl("<TABHERE>Publisher"+nname+"(ros::NodeHandle *node)\n<TABHERE>{")
+			cog.outl("<TABHERE><TABHERE>// publisher = node->advertise<datatype>(\"topic\", 1000)")
+
+			for key in pub_data_map:
+				name = key
+				type = pub_data_map[key]['type']
+				topic = pub_data_map[key]['topic']
+				if (topic != ''):
+					cog.outl("<TABHERE><TABHERE>pub_"+name+" = node->advertise<"+type+">(node->resolveName("+topic+"), 1000);")
 
 			type_map = dict()
 			for type in module['types']:
 				if 'type' in type:
 					type_map[module['name'] + '::' + type['name']] = type['type']
+
+			"""
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
 					for mname in interface['methods']:
@@ -230,9 +288,12 @@ if component['usingROS'] == True:
 								cog.outl("<TABHERE><TABHERE>pub_"+mname+" = node->advertise<"+p['type'].replace("::","ROS::")+">(node->resolveName("+s+"), 1000);")
 							else:
 								cog.outl("<TABHERE><TABHERE>pub_"+mname+" = node->advertise<"+module['name']+"ROS::"+p['type']+">(node->resolveName("+s+"), 1000);")
+			"""
 			cog.outl("<TABHERE>}")
 
 			cog.outl("<TABHERE>~Publisher"+nname+"(){}")
+
+			"""
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
 					for mname in interface['methods']:
@@ -244,6 +305,8 @@ if component['usingROS'] == True:
 								check = True
 								break
 						if check:
+							continue
+						if not isPub (method):
 							continue
 						for p in method['params']:
 							if p['type'] in ('float','int'):
@@ -266,6 +329,29 @@ if component['usingROS'] == True:
 								cog.outl("<TABHERE>void "+mname+"("+module['name']+"ROS::"+p['type']+" "+p['name']+")")
 								cog.outl("<TABHERE>{\n<TABHERE><TABHERE>pub_"+mname+".publish("+p['name']+");")
 								cog.outl("<TABHERE>}")
+			"""
+
+			import_types = []
+			recursive_import_types = []
+
+			if (module['imports'] != ''):
+				import_types = DSLFactory().from_file (module['imports'])['types']
+			if (module['recursive_imports'] != ''):
+				recursive_import_types = DSLFactory().from_file (module['recursive_imports'])['types']
+
+			module['types'] += import_types + recursive_import_types
+
+			for interface in module['interfaces']:
+				for m in interface['methods']:
+					method = interface['methods'][m]
+					if isPub (method) and m in pub_data_map:
+						p_name = method['params'][0]['name']
+						t = method['params'][0]['type'] if ('::' in method['params'][0]['type']) else (module['name'] + '::' + method['params'][0]['type'])
+						cog.outl("<TABHERE>void "+method['name']+" ("+t+" "+p_name+") {")
+						cog.outl("<TABHERE><TABHERE>"+pub_data_map[m]['type']+" "+"ros_msg;")
+						cog.outl("<TABHERE><TABHERE>// convert the ICE data type into ROS message")
+						cog.outl("<TABHERE><TABHERE>pub_"+m+".publish(ros_msg);")
+						cog.outl("<TABHERE>}")
 			cog.outl("};")
 
 	#CREANDO CLASES PARA LOS REQUIRES
@@ -426,6 +512,7 @@ if 'implements' in component:
 							cog.outl("<TABHERE>virtual bool ROS" + method['name'] + '(' + paramStrA + ") = 0;")
 						else:
 							cog.outl("<TABHERE>virtual bool " + method['name'] + '(' + paramStrA + ") = 0;")
+sub_map = dict()
 if 'subscribesTo' in component:
 	for impa in component['subscribesTo']:
 		if type(impa) == str:
@@ -461,6 +548,7 @@ if 'subscribesTo' in component:
 							# STR
 							paramStrA += delim + const + p['type'] + ' ' + ampersand + p['name']
 						cog.outl("<TABHERE>virtual " + method['return'] + ' ' + interface['name'] + "_" + method['name'] + '(' + paramStrA + ") = 0;")
+					"""
 					else:
 						for p in method['params']:
 							# delim
@@ -487,6 +575,40 @@ if 'subscribesTo' in component:
 							cog.outl("<TABHERE>virtual void ROS" + method['name'] + '(' + paramStrA + ") = 0;")
 						else:
 							cog.outl("<TABHERE>virtual void " + method['name'] + '(' + paramStrA + ") = 0;")
+					"""
+				if not communicationIsIce(impa):
+					for t in module['types']:
+						if t['type'] != 'dictionary':
+							d_type = ''
+							n = t['name'].split('::')[-1]
+							sub_map[n] = dict()
+							sub_map[n]['func_name'] = "cb_" + n
+							if '::' in t['name']:
+								d_type = t['name'].replace('::', 'ROS::')
+							else:
+								d_type = module['name'] + 'ROS::' + t['name']
+							sub_map[n]['data_type'] = d_type
+							cog.outl("<TABHERE>virtual void cb_"+n+"(" + d_type + " ros_msg) = 0;")
+
+					for interface in module['interfaces']:
+						for method in interface['methods']:
+							m = interface['methods'][method]
+							if isPub (m):
+								p = m['params'][0]
+								p_name = m['name']
+								sub_map[p_name] = dict()
+								if p['type'] in ('float','int'):
+									sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()+"32"
+								elif p['type'] in ('uint8','uint16','uint32','uint64'):
+									sub_map[p_name]['data_type'] = "std_msgs::UInt"+p['type'].split('t')[1]+"32"
+								elif p['type'] in rosTypes:
+									sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()
+								elif '::' in p['type']:
+									sub_map[p_name]['data_type'] = p['type'].replace('::', 'ROS::')
+								else:
+									sub_map[p_name]['data_type'] = module['name'] + 'ROS::' + p['type']
+								sub_map[p_name]['func_name'] = "cb_" + p_name
+								cog.outl("<TABHERE>virtual void cb_"+p_name+"("+sub_map[p_name]['data_type']+" ros_msg) = 0;")
 
 ]]]
 [[[end]]]
@@ -578,11 +700,17 @@ for imp in component['subscribesTo']:
 		print ('\nCan\'t find module providing', nname, '\n')
 		sys.exit(-1)
 	if not communicationIsIce(imp):
+		"""
 		for interface in module['interfaces']:
 			if interface['name'] == nname:
 				for mname in interface['methods']:
 					method = interface['methods'][mname]
 					cog.outl("<TABHERE>ros::Subscriber "+nname+"_"+mname+";")
+
+		"""
+		for key in sub_map:
+			cog.outl("<TABHERE>ros::Subscriber sub_"+key+";")
+
 for imp in component['implements']:
 	nname = imp
 	while type(nname) != type(''):

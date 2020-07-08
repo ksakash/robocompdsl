@@ -230,6 +230,16 @@ for name, num in getNameNumber(component['publishes']):
 	mutex = new QMutex(QMutex::Recursive);
 
 [[[cog
+def isPub(method):
+	returnTypeVoid = (method['return'] == 'void')
+	paramWithOut = False
+	moreThanOne = not (len(method['params']) == 1)
+	for param in method['params']:
+		if param['decorator'] == 'out':
+			paramWithOut = True
+			break
+	return returnTypeVoid and (not paramWithOut) and (not moreThanOne)
+
 if component['usingROS'] == True:
 	#INICIALIZANDO SUBSCRIBERS
 	for imp in component['subscribesTo']:
@@ -241,6 +251,7 @@ if component['usingROS'] == True:
 			print ('\nCan\'t find module providing', nname, '\n')
 			sys.exit(-1)
 		if not communicationIsIce(imp):
+			"""
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
 					for mname in interface['methods']:
@@ -249,6 +260,41 @@ if component['usingROS'] == True:
 							cog.outl("<TABHERE>"+nname+"_"+mname+" = node.subscribe("+s+", 1000, &GenericWorker::ROS"+mname+", this);")
 						else:
 							cog.outl("<TABHERE>"+nname+"_"+mname+" = node.subscribe("+s+", 1000, &GenericWorker::"+mname+", this);")
+			"""
+			sub_map = dict()
+			for t in module['types']:
+				if t['type'] != 'dictionary':
+					d_type = ''
+					n = t['name'].split('::')[-1]
+					sub_map[n] = dict()
+					sub_map[n]['func_name'] = "cb_" + n
+					if '::' in t['name']:
+						d_type = t['name'].replace('::', 'ROS::')
+					else:
+						d_type = module['name'] + 'ROS::' + t['name']
+					sub_map[n]['data_type'] = d_type
+					cog.outl("<TABHERE>// sub_"+n+" = node.subscribe(\"<topic_name>\", 1000, &GenericWorker::"+"cb_" + n + ", this);")
+
+			for interface in module['interfaces']:
+				for method in interface['methods']:
+					m = interface['methods'][method]
+					if isPub (m):
+						p = m['params'][0]
+						p_name = m['name']
+						sub_map[p_name] = dict()
+						if p['type'] in ('float','int'):
+							sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()+"32"
+						elif p['type'] in ('uint8','uint16','uint32','uint64'):
+							sub_map[p_name]['data_type'] = "std_msgs::UInt"+p['type'].split('t')[1]+"32"
+						elif p['type'] in rosTypes:
+							sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()
+						elif '::' in p['type']:
+							sub_map[p_name]['data_type'] = p['type'].replace('::', 'ROS::')
+						else:
+							sub_map[p_name]['data_type'] = module['name'] + 'ROS::' + p['type']
+						sub_map[p_name]['func_name'] = "cb_" + p_name
+						cog.outl("<TABHERE>sub_"+p_name+" = node.subscribe(\""+interface['name']+"\", 1000, &GenericWorker::"+"cb_" + p_name + ", this);")
+
 	#INICIALIZANDO IMPLEMENTS
 	for imp in component['implements']:
 		nname = imp
