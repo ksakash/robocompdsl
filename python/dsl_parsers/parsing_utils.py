@@ -3,6 +3,23 @@ import sys
 import traceback
 from collections import Counter, OrderedDict
 
+def isPub(method):
+	returnTypeVoid = (method['return'] == 'void')
+	paramWithOut = False
+	moreThanOne = not (len(method['params']) == 1)
+	for param in method['params']:
+		if param['decorator'] == 'out':
+			paramWithOut = True
+			break
+	return returnTypeVoid and (not paramWithOut) and (not moreThanOne)
+
+def isSrv(method):
+    returnTypeVoid = (method['return'] != 'void')
+    paramWithOut = False
+    for param in method['params']:
+        if param['decorator'] == 'out':
+            paramWithOut = True
+    return returnTypeVoid or paramWithOut
 
 def generateRecursiveImports(initial_idsls, include_directories=[]):
     new_idsls = []
@@ -47,10 +64,10 @@ def generateRecursiveImports(initial_idsls, include_directories=[]):
 def communicationIsIce(sb):
     isIce = True
     if len(sb) == 2:
-        if sb[1] == 'ros'.lower():
+        if (sb[1].lower() == 'ros') or (sb[1].lower() == 'ros2'):
             isIce = False
-        elif sb[1] != 'ice'.lower() :
-            print('Only ICE and ROS are supported')
+        elif sb[1].lower() != 'ice':
+            print('Only ICE, ROS and ROS2 are supported')
             sys.exit(-1)
     return isIce
 

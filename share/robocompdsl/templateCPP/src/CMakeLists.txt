@@ -1,6 +1,6 @@
 [[[cog
 import sys
-sys.path.append('/opt/robocomp/python')
+sys.path.append('/home/ksakash/archives/robocomp/python')
 
 import cog
 
@@ -33,7 +33,7 @@ component = DSLFactory().from_file(theCDSL, include_directories=includeDirectori
 
 ]]]
 [[[end]]]
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 3.5)
 
 
 IF ( "$ENV{ROBOCOMP}" STREQUAL "")
@@ -48,6 +48,12 @@ ENDIF(NOT EXISTS $ENV{ROBOCOMP}/cmake)
 INCLUDE( $ENV{ROBOCOMP}/cmake/robocomp.cmake )
 INCLUDE( $ENV{ROBOCOMP}/cmake/modules/qt.cmake )
 INCLUDE ( CMakeListsSpecific.txt)
+
+[[[cog
+if component['usingROS2']:
+	cog.outl("find_package(rclcpp REQUIRED)")
+]]]
+[[[end]]]
 
 # Sources set
 SET ( SOURCES
@@ -113,14 +119,14 @@ if component['language'].lower() == "cpp11":
 
 #ROBOCOMP
 ROBOCOMP_INITIALIZE( $ENV{ROBOCOMP}/ )
-ROBOCOMP_WRAP_ICE( CommonBehavior 
+ROBOCOMP_WRAP_ICE(CommonBehavior
 [[[cog
 A()
 imp = []
 for im in component['recursiveImports'] + component["iceInterfaces"]:
     name = im.split('/')[-1].split('.')[0]
     imp.append(name)
-cog.out(' '.join(imp))
+cog.out(" "+' '.join(imp))
 try:
 	options = [ x.lower() for x in component['options'] ]
 	if 'agmagent' in options:
@@ -166,6 +172,12 @@ Z()
 ]]]
 [[[end]]]
 ${SOURCES} ${MOC_SOURCES} ${RC_SOURCES} ${UI_HEADERS} )
+
+[[[cog
+if component['usingROS2']:
+	cog.outl("ament_target_dependencies("+component['name']+" rclcpp)")
+]]]
+[[[end]]]
 TARGET_LINK_LIBRARIES(
 [[[cog
 A()
@@ -182,3 +194,9 @@ Z()
 ]]]
 [[[end]]]
 DESTINATION ${RC_COMPONENT_INSTALL_PATH}/bin/ PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )
+
+[[[cog
+if component['usingROS2']:
+	cog.outl("rosidl_target_interfaces("+component['name']+" ${PROJECT_NAME} \"rosidl_typesupport_cpp\")")
+]]]
+[[[end]]]

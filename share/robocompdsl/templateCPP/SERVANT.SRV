@@ -1,7 +1,7 @@
 [[[cog
 
 import sys
-sys.path.append('/opt/robocomp/python')
+sys.path.append('/home/ksakash/archives/robocomp/python')
 
 import cog
 def A():
@@ -35,7 +35,6 @@ for interface in idsl['interfaces']:
 	for method in interface['methods']:
 		if methodName == interface['methods'][method]['name'] and 'params' in interface['methods'][method]:
 			if isSrv (interface['methods'][method]):
-				#print (interface['methods'][method]['params'])
 				for param in interface['methods'][method]['params']:
 					#print (param)
 					if param['decorator'] != 'out':

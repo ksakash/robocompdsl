@@ -35,7 +35,7 @@ class CDSLParser(DSLParserTemplate):
 
         idslImports = ZeroOrMore(idslImport).setResultsName("imports")
 
-        commType = Optional(OPAR - (CaselessKeyword("ice") | CaselessKeyword("ros")).setResultsName("type") + CPAR)
+        commType = Optional(OPAR - (CaselessKeyword("ice") | CaselessKeyword("ros") | CaselessKeyword("ros2")).setResultsName("type") + CPAR)
 
         implementsList = Optional(
             IMPLEMENTS - Group(delimitedList(Group(identifier.setResultsName("impIdentifier") + commType))).setResultsName(
@@ -52,12 +52,6 @@ class CDSLParser(DSLParserTemplate):
         publishesList = Optional(
             PUBLISHES - Group(delimitedList(Group(identifier.setResultsName("pubIdentifier") + commType))).setResultsName(
                 "publishes") + SEMI)
-
-        #publishesList = Optional(
-        #    PUBLISHES - Group(delimitedList(identifier.setResultsName("pubIdentifier") + commType)).setResultsName(
-        #        "publishes") + SEMI)
-
-
 
         communicationList = Group(implementsList & requiresList & subscribesList & publishesList).setResultsName(
             "communications")
@@ -165,12 +159,14 @@ class CDSLParser(DSLParserTemplate):
 
         # Communications
         component['rosInterfaces'] = []
+        component['ros2Interfaces'] = []
         component['iceInterfaces'] = []
         component['implements'] = []
         component['requires'] = []
         component['publishes'] = []
         component['subscribesTo'] = []
         component['usingROS'] = False
+        component['usingROS2'] = False
         ####################
         com_types = ['implements', 'requires', 'publishes', 'subscribesTo']
         communications = parsing_result['component']['content']['communications']
@@ -178,17 +174,16 @@ class CDSLParser(DSLParserTemplate):
             if comm_type in communications:
                 interfaces = communications[comm_type]
                 for interface in interfaces:
-                    #print (type(interface))
                     interface = list (interface)
-                    #print (type(interface[0]))
-                    #print (interface)
-                    #print (component[comm_type])
                     component[comm_type].append(interface)
                     if communicationIsIce(interface):
                         component['iceInterfaces'].append(interface[0])
-                    else:
+                    elif interface[1].lower() == 'ros':
                         component['rosInterfaces'].append(interface[0])
                         component['usingROS'] = True
+                    else:
+                        component['ros2Interfaces'].append(interface[0])
+                        component['usingROS2'] = True
         # Handle options for communications
         if isAGM1Agent(component):
             component['iceInterfaces'] += ['AGMCommonBehavior', 'AGMExecutive', 'AGMExecutiveTopic', 'AGMWorldModel']

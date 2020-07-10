@@ -2,7 +2,10 @@
 [[[cog
 
 import sys
-sys.path.append('/opt/robocomp/python')
+import re
+import stringcase as sc
+
+sys.path.append('/home/ksakash/archives/robocomp/python')
 
 import cog
 def A():
@@ -21,6 +24,13 @@ def isPub(method):
 			paramWithOut = True
 			break
 	return returnTypeVoid and (not paramWithOut) and (not moreThanOne)
+
+def camel_to_snake(name):
+  name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+  return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
+
+def snake_to_camel(word):
+    return ''.join(x.capitalize() or '_' for x in word.split('_'))
 
 from dsl_parsers.dsl_factory import DSLFactory
 from dsl_parsers.parsing_utils import getNameNumber, communicationIsIce, IDSLPool, isAGM1Agent,isAGM2Agent
@@ -131,6 +141,63 @@ if component['usingROS'] == True:
 	for srv in srvIncludes.values():
 		cog.outl(srv)
 
+def getMsgIncludeListROS2 (module):
+	msgIncludeList = []
+	component_name = camel_to_snake(component['name'])
+	for t in module['types']:
+		if t['type'] != 'dictionary':
+			msgIncludeList.append("#include <"+component_name+"/msg/"+camel_to_snake(t['name'].split('::')[-1])+".hpp>")
+
+	for interface in module['interfaces']:
+		for method in interface['methods']:
+			m = interface['methods'][method]
+			if isPub (m):
+				p = m['params'][0]
+				if p['type'] in ('float','int'):
+					msgIncludeList.append("#include <std_msgs/msg/"+camel_to_snake(p['type']+"32")+".hpp>")
+				elif p['type'] in ('uint8','uint16','uint32','uint64'):
+					msgIncludeList.append("#include <std_msgs/msg/"+camel_to_snake("UInt"+p['type'].split('t')[1]+"32")+".hpp>")
+				elif p['type'] in rosTypes:
+					msgIncludeList.append("#include <std_msgs/msg/"+camel_to_snake(p['type'])+".hpp>")
+				elif '::' in p['type']:
+					msgIncludeList.append("#include <"+component_name+"/msg/"+camel_to_snake(p['type'].split('::')[-1])+".hpp>")
+				else:
+					msgIncludeList.append("#include <"+component_name+"/msg/"+camel_to_snake(p['type'])+".hpp>")
+	return msgIncludeList
+
+def isSrv(method):
+    returnTypeVoid = (method['return'] != 'void')
+    paramWithOut = False
+    for param in method['params']:
+        if param['decorator'] == 'out':
+            paramWithOut = True
+    return returnTypeVoid or paramWithOut
+
+def getSrvIncludeListROS2 (module):
+	srvIncludeList = []
+	component_name = camel_to_snake(component['name'])
+	for interface in module['interfaces']:
+		for method in interface['methods']:
+			m = interface['methods'][method]
+			if isSrv (m):
+				srvIncludeList.append ("#include <"+component_name+"/srv/"+camel_to_snake(method)+".hpp>")
+
+if component['usingROS2']:
+	cog.outl('#include <rclcpp/rclcpp.hpp>')
+	for interface in component['publishes'] + component['subscribesTo']:
+		interface = interface[0]
+		module = pool.moduleProviding(interface)
+		msgIncludeList = getMsgIncludeListROS2 (module)
+		for include in msgIncludeList:
+			cog.outl(include)
+
+	for interface in (component['requires'] + component['implements']):
+		interface = interface[0]
+		module = pool.moduleProviding(interface)
+		srvIncludeList = getSrvIncludeListROS2 (module)
+		for include in srvIncludeList:
+			cog.outl(include)
+
 try:
 	if isAGM1Agent(component):
 		cog.outl("#include <agm.h>")
@@ -160,6 +227,10 @@ for imp in component['recursiveImports'] + component["iceInterfaces"]:
 		usingList.append(name)
 for name in usingList:
 	cog.outl("using namespace RoboComp"+name+";")
+
+if component['usingROS2']:
+	cog.outl("using namespace std::chrono_literals;")
+
 ]]]
 [[[end]]]
 
@@ -190,7 +261,7 @@ except:
 [[[end]]]
 
 [[[cog
-if component['usingROS'] == True:
+if component['usingROS'] or component['usingROS2']:
 	#CREANDO CLASES PARA LOS PUBLISHERS
 	for imp in component['publishes']:
 		nname = imp
@@ -215,16 +286,28 @@ if component['usingROS'] == True:
 
 			pub_data_map = dict()
 			cog.outl("<TABHERE>// publisher for every data types in the given interfaces")
+			component_name = camel_to_snake(component['name'])
 			for t in module['types']:
 				if t['type'] != 'dictionary':
-					cog.outl("<TABHERE>ros::Publisher pub_"+t['name'].split('::')[-1]+";")
 					pub_data_map[t['name']] = dict()
+					"""
 					if '::' in t['name']:
-						pub_data_map[t['name']]['type'] = t['type'].replace('::', 'ROS::')
+						if component['usingROS']:
+							pub_data_map[t['name']]['type'] = t['type'].replace('::', 'ROS::')
+						else:
+							pub_data_map[t['name']]['type'] = component_name + "::msg::" + t['name'].split('::')[-1]
 						pub_data_map[t['name']]['topic'] = ''
 					else:
-						pub_data_map[t['name']]['type'] = module['name'] + 'ROS::' + t['type']
-						pub_data_map[t['name']]['topic'] = ''
+					"""
+					if component['usingROS']:
+						pub_data_map[t['name']]['type'] = module['name'] + 'ROS::' + t['name']
+					else:
+						pub_data_map[t['name']]['type'] = component_name + "::msg::" + sc.pascalcase(t['name'])
+					pub_data_map[t['name']]['topic'] = ''
+					if component['usingROS']:
+						cog.outl("<TABHERE>ros::Publisher pub_"+t['name'].split('::')[-1]+";")
+					else:
+						cog.outl("<TABHERE>rclcpp::Publisher<"+pub_data_map[t['name']]['type']+">::SharedPtr pub_"+t['name']+";")
 
 			for interface in module['interfaces']:
 				for method in interface['methods']:
@@ -232,31 +315,62 @@ if component['usingROS'] == True:
 					if isPub (m):
 						p = m['params'][0]
 						p_name = m['name']
-						cog.outl("<TABHERE>ros::Publisher pub_"+p_name+";")
 						pub_data_map[p_name] = dict()
+						component_name = camel_to_snake(component['name'])
 						if p['type'] in ('float','int'):
-							pub_data_map[p_name]['type'] = "std_msgs::"+p['type'].capitalize()+"32"
+							if component['usingROS']:
+								pub_data_map[p_name]['type'] = "std_msgs::"+p['type'].capitalize()+"32"
+							else:
+								pub_data_map[p_name]['type'] = "std_msgs::msg::"+sc.pascalcase(p['type']+"32")
 						elif p['type'] in ('uint8','uint16','uint32','uint64'):
-							pub_data_map[p_name]['type'] = "std_msgs::UInt"+p['type'].split('t')[1]+"32"
+							if component['usingROS']:
+								pub_data_map[p_name]['type'] = "std_msgs::UInt"+p['type'].split('t')[1]+"32"
+							else:
+								pub_data_map[p_name]['type'] = "std_msgs::msg::"+sc.pascalcase("UInt"+p['type'].split('t')[1]+"32")
 						elif p['type'] in rosTypes:
-							pub_data_map[p_name]['type'] = "std_msgs::"+p['type'].capitalize()
+							if component['usingROS']:
+								pub_data_map[p_name]['type'] = "std_msgs::"+p['type'].capitalize()
+							else:
+								pub_data_map[p_name]['type'] = "std_msgs::msg::"+sc.pascalcase(p['type'])
 						elif '::' in p['type']:
-							pub_data_map[p_name]['type'] = p['type'].replace('::', 'ROS::')
+							if component['usingROS']:
+								pub_data_map[p_name]['type'] = p['type'].replace('::', 'ROS::')
+							else:
+								pub_data_map[p_name]['type'] = component_name+"::msg::"+sc.pascalcase(p['type'].split('::')[-1])
 						else:
-							pub_data_map[p_name]['type'] = module['name'] + 'ROS::' + p['type']
+							if component['usingROS']:
+								pub_data_map[p_name]['type'] = module['name'] + "ROS::" + p['type']
+							else:
+								pub_data_map[p_name]['type'] = component_name + '::msg::' + sc.pascalcase(p['type'])
 						pub_data_map[p_name]['topic'] = interface['name']
+						if component['usingROS']:
+							cog.outl("<TABHERE>ros::Publisher pub_"+p_name+";")
+						else:
+							cog.outl("<TABHERE>rclcpp::Publisher<"+pub_data_map[p_name]['type']+">::SharedPtr pub_"+p_name+";")
+			if component['usingROS2']:
+				cog.outl("<TABHERE>rclcpp::Node::SharedPtr node;\n")
+			if component['usingROS']:
+				cog.outl("<TABHERE>Publisher"+nname+"(ros::NodeHandle *node)\n<TABHERE>{")
+			elif component['usingROS2']:
+				cog.outl("<TABHERE>Publisher"+nname+"()\n<TABHERE>{")
 
-			# print ("pub_data_map", pub_data_map)
+			if component['usingROS2']:
+				cog.outl("<TABHERE><TABHERE>node = rclcpp::Node::make_shared(\"my_publisher\");")
 
-			cog.outl("<TABHERE>Publisher"+nname+"(ros::NodeHandle *node)\n<TABHERE>{")
-			cog.outl("<TABHERE><TABHERE>// publisher = node->advertise<datatype>(\"topic\", 1000)")
+			if component['usingROS']:
+				cog.outl("<TABHERE><TABHERE>// publisher = node->advertise<datatype>(\"topic\", 1000)")
+			else:
+				cog.outl("<TABHERE><TABHERE>// publisher = node->create_publisher<data_type>(\"topic\", 10);")
 
 			for key in pub_data_map:
 				name = key
 				type = pub_data_map[key]['type']
 				topic = pub_data_map[key]['topic']
 				if (topic != ''):
-					cog.outl("<TABHERE><TABHERE>pub_"+name+" = node->advertise<"+type+">(node->resolveName("+topic+"), 1000);")
+					if component['usingROS']:
+						cog.outl("<TABHERE><TABHERE>pub_"+name+" = node->advertise<"+type+">(node->resolveName("+topic+"), 1000);")
+					else:
+						cog.outl("<TABHERE><TABHERE>pub_"+name+" = node->create_publisher<"+type+">(\"+topic+\", 10);")
 
 			type_map = dict()
 			for type in module['types']:
@@ -353,6 +467,100 @@ if component['usingROS'] == True:
 						cog.outl("<TABHERE><TABHERE>pub_"+m+".publish(ros_msg);")
 						cog.outl("<TABHERE>}")
 			cog.outl("};")
+
+	if component['usingROS2']:
+		for imp in component['subscribesTo']:
+			nname = imp
+			if (len(imp) == 2 and nnmae[1] == 'ros2'):
+				nname = imp[0]
+			else:
+				continue
+			module = pool.moduleProviding(nname)
+			if module == None:
+				print ('\nCan\'t find module providing', nname, '\n')
+				sys.exit(-1)
+			if not communicationIsIce(imp):
+				theIdsl = pool.IDSLsModule(module)
+				idsl = DSLFactory().from_file(theIdsl)
+
+				cog.outl("class Subscriber"+nname+"\n{\npublic:")
+
+				sub_data_map = dict()
+				cog.outl("<TABHERE>// subscriber for every data types in the given interfaces")
+				component_name = camel_to_snake(component['name'])
+				for t in module['types']:
+					if t['type'] != 'dictionary':
+						sub_data_map[t['name']] = dict()
+
+						sub_data_map[t['name']]['type'] = component_name + "::msg::" + sc.pascalcase(t['name'])
+						sub_data_map[t['name']]['topic'] = ''
+
+						cog.outl("<TABHERE>rclcpp::Subscription<"+sub_data_map[t['name']]['type']+">::SharedPtr sub_"+t['name']+";")
+
+				for interface in module['interfaces']:
+					for method in interface['methods']:
+						m = interface['methods'][method]
+						if isPub (m):
+							p = m['params'][0]
+							p_name = m['name']
+							sub_data_map[p_name] = dict()
+							component_name = camel_to_snake(component['name'])
+							if p['type'] in ('float','int'):
+								sub_data_map[p_name]['type'] = "std_msgs::msg::"+sc.pascalcase(p['type']+"32")
+							elif p['type'] in ('uint8','uint16','uint32','uint64'):
+								sub_data_map[p_name]['type'] = "std_msgs::msg::"+sc.pascalcase("UInt"+p['type'].split('t')[1]+"32")
+							elif p['type'] in rosTypes:
+								sub_data_map[p_name]['type'] = "std_msgs::msg::"+sc.pascalcase(p['type'])
+							elif '::' in p['type']:
+								sub_data_map[p_name]['type'] = component_name+"::msg::"+sc.pascalcase(p['type'].split('::')[-1])
+							else:
+								sub_data_map[p_name]['type'] = component_name + '::msg::' + sc.pascalcase(p['type'])
+							sub_data_map[p_name]['topic'] = interface['name']
+							cog.outl("<TABHERE>rclcpp::Subscription<"+sub_data_map[p_name]['type']+">::SharedPtr pub_"+p_name+";")
+
+				cog.outl("<TABHERE>rclcpp::Node::SharedPtr node;\n")
+				cog.outl("<TABHERE>Subscriber"+nname+"()\n<TABHERE>{")
+
+				cog.outl("<TABHERE><TABHERE>node = rclcpp::Node::make_shared(\"my_subscriber\");")
+				cog.outl("<TABHERE><TABHERE>// subscriber = node->create_subscription<data_type>(\"topic\", 10);")
+
+				for key in sub_data_map:
+					name = key
+					type = sub_data_map[key]['type']
+					topic = sub_data_map[key]['topic']
+					if (topic != ''):
+						cog.outl("<TABHERE><TABHERE>sub_"+name+" = node->create_subscription<"+type+">(\"+topic+\", 10);")
+
+				type_map = dict()
+				for type in module['types']:
+					if 'type' in type:
+						type_map[module['name'] + '::' + type['name']] = type['type']
+
+				cog.outl("<TABHERE>}")
+				cog.outl("<TABHERE>~Subscriber"+nname+"(){}")
+
+				import_types = []
+				recursive_import_types = []
+
+				if (module['imports'] != ''):
+					import_types = DSLFactory().from_file (module['imports'])['types']
+				if (module['recursive_imports'] != ''):
+					recursive_import_types = DSLFactory().from_file (module['recursive_imports'])['types']
+
+				module['types'] += import_types + recursive_import_types
+
+				for interface in module['interfaces']:
+					for m in interface['methods']:
+						method = interface['methods'][m]
+						if isPub (method) and m in pub_data_map:
+							p_name = method['params'][0]['name']
+							t = method['params'][0]['type'] if ('::' in method['params'][0]['type']) else (module['name'] + '::' + method['params'][0]['type'])
+							cog.outl("<TABHERE>void "+method['name']+" ("+t+" "+p_name+") {")
+							cog.outl("<TABHERE><TABHERE>"+pub_data_map[m]['type']+" "+"ros_msg;")
+							cog.outl("<TABHERE><TABHERE>// convert the ICE data type into ROS message")
+							cog.outl("<TABHERE><TABHERE>pub_"+m+".publish(ros_msg);")
+							cog.outl("<TABHERE>}")
+				cog.outl("};")
 
 	#CREANDO CLASES PARA LOS REQUIRES
 	for imp in component['requires']:

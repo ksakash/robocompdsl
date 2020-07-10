@@ -1,9 +1,9 @@
 [[[cog
 import sys
-sys.path.append('/opt/robocomp/python')
+sys.path.append('/home/ksakash/archives/robocomp/python')
 
 import cog
-
+import stringcase as sc
 
 includeDirectories = theIDSLPaths.split('#')
 
@@ -21,16 +21,19 @@ def SPACE(i=0):
 	cog.out('<S'+s+'>')
 
 from dsl_parsers.dsl_factory import DSLFactory
+from dsl_parsers.parsing_utils import isPub, IDSLPool
+
 includeDirectories = theIDSLPaths.split('#')
 component = DSLFactory().from_file(theCDSL, include_directories=includeDirectories)
+pool = IDSLPool(theIDSLs, includeDirectories)
 
 ]]]
 [[[end]]]
-cmake_minimum_required( VERSION 2.8 )
+cmake_minimum_required( VERSION 3.5 )
 PROJECT(
 [[[cog
 A()
-cog.out(' ' + component['name'])
+cog.out(' ' + sc.snakecase(component['name']))
 Z()
 ]]]
 [[[end]]]
@@ -46,6 +49,51 @@ SET(RC_COMPONENT_INSTALL_PATH "/opt/robocomp" CACHE STRING "component install pa
 #STRING(REPLACE "${COMPONENT_NAME}/" " " COMPONENT_NAME  ${RC_COMPONENT_PATH})
 #STRING(STRIP ${COMPONENT_NAME} COMPONENT_NAME)
 #SET(COMPONENT_NAME ${COMPONENT_NAME} CACHE STRING "component name" FORCE)
+
+[[[cog
+
+def getMsgList (module):
+	msgList = []
+
+	for t in module['types']:
+		if t['type'] != 'dictionary':
+			msgList.append(sc.pascalcase(t['name'].split('::')[-1]))
+
+	for interface in module['interfaces']:
+		for method in interface['methods']:
+			m = interface['methods'][method]
+			if isPub (m):
+				p = m['params'][0]
+				if p['type'] in ('float','int'):
+					pass
+				elif p['type'] in ('uint8','uint16','uint32','uint64'):
+					pass
+				elif p['type'] in rosTypes:
+					pass
+				elif '::' in p['type']:
+					msgList.append(sc.pascalcase(p['type'].split('::')[-1]))
+				else:
+					msgList.append(sc.pascalcase(p['type']))
+
+	return msgList
+
+if component['usingROS2']:
+	cog.outl("find_package(ament_cmake REQUIRED)")
+	cog.outl("find_package(rosidl_default_generators REQUIRED)")
+	cog.outl("rosidl_generate_interfaces(${PROJECT_NAME}")
+	for interface in component['publishes'] + component['subscribesTo'] + component['implements'] + component['requires']:
+		interface = interface[0]
+		module = pool.moduleProviding(interface)
+		msgList = getMsgList (module)
+		# print ("msgList", msgList)
+		for msg in msgList:
+			cog.outl("<TABHERE>\"msg/"+msg+".msg\"")
+	cog.outl(")")
+
+	cog.outl("ament_export_dependencies (rosidl_default_runtime)")
+
+]]]
+[[[end]]]
 
 SUBDIRS( src )
 
@@ -67,3 +115,9 @@ Z()
 ]]]
 [[[end]]]
 )
+
+[[[cog
+if component['usingROS2']:
+	cog.outl("ament_package()")
+]]]
+[[[end]]]

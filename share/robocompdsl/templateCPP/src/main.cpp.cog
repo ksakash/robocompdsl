@@ -2,7 +2,7 @@
 [[[cog
 
 import sys
-sys.path.append('/opt/robocomp/python')
+sys.path.append('/home/ksakash/archives/robocomp/python')
 
 import cog
 def A():
@@ -380,6 +380,10 @@ for name, num in  getNameNumber(component['requires']):
 	initialize();
 
 [[[cog
+
+if component['usingROS2']:
+	cog.outl("<TABHERE>rclcpp::init(argc, argv);")
+
 proxy_list = []
 for name, num in getNameNumber(component['requires']):
 	if communicationIsIce(name):

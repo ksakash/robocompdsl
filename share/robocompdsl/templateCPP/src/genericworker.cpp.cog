@@ -2,7 +2,7 @@
 [[[cog
 
 import sys
-sys.path.append('/opt/robocomp/python')
+sys.path.append('/home/ksakash/archives/robocomp/python')
 
 import cog
 def A():
@@ -320,9 +320,15 @@ if 'publishes' in component:
 			pubs = pubs[0]
 		if not communicationIsIce(publish):
 			if pubs in component['iceInterfaces']:
-				cog.outl("<TABHERE>"+pubs.lower()+"_rosproxy = new Publisher"+pubs+"(&node);")
+				if component['usingROS']:
+					cog.outl("<TABHERE>"+pubs.lower()+"_rosproxy = new Publisher"+pubs+"(&node);")
+				else:
+					cog.outl("<TABHERE>"+pubs.lower()+"_rosproxy = new Publisher"+pubs+"();")
 			else:
-				cog.outl("<TABHERE>"+pubs.lower()+"_proxy = new Publisher"+pubs+"(&node);")
+				if component['usingROS']:
+					cog.outl("<TABHERE>"+pubs.lower()+"_proxy = new Publisher"+pubs+"(&node);")
+				else:
+					cog.outl("<TABHERE>"+pubs.lower()+"_proxy = new Publisher"+pubs+"();")
 if 'requires' in component:
 	for require in component['requires']:
 		req = require
