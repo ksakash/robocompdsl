@@ -240,7 +240,7 @@ def isPub(method):
 			break
 	return returnTypeVoid and (not paramWithOut) and (not moreThanOne)
 
-if component['usingROS'] == True:
+if component['usingROS'] or component['usingROS2']:
 	#INICIALIZANDO SUBSCRIBERS
 	for imp in component['subscribesTo']:
 		nname = imp
@@ -250,7 +250,7 @@ if component['usingROS'] == True:
 		if module == None:
 			print ('\nCan\'t find module providing', nname, '\n')
 			sys.exit(-1)
-		if not communicationIsIce(imp):
+		if not communicationIsIce(imp) and imp[1] == 'ros':
 			"""
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
@@ -294,6 +294,10 @@ if component['usingROS'] == True:
 							sub_map[p_name]['data_type'] = module['name'] + 'ROS::' + p['type']
 						sub_map[p_name]['func_name'] = "cb_" + p_name
 						cog.outl("<TABHERE>sub_"+p_name+" = node.subscribe(\""+interface['name']+"\", 1000, &GenericWorker::"+"cb_" + p_name + ", this);")
+
+		if component['usingROS2']:
+			for interface in module['interfaces']:
+				cog.outl("<TABHERE>"+interface['name'].lower()+"_proxy = new Subscriber"+interface['name']+"();")
 
 	#INICIALIZANDO IMPLEMENTS
 	for imp in component['implements']:

@@ -418,7 +418,7 @@ if 'subscribesTo' in component:
 						else:
 							cog.outl('void SpecificWorker::' + method['name'] + '(' + paramStrA + ")\n{\n//subscribesToCODE\n"+bodyCode+"\n}\n")
 					"""
-				if not communicationIsIce(impa):
+				if not communicationIsIce(impa) and impa[1] == 'ros':
 					sub_map = dict()
 					for t in module['types']:
 						if t['type'] != 'dictionary':

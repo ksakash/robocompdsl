@@ -471,7 +471,7 @@ if component['usingROS'] or component['usingROS2']:
 	if component['usingROS2']:
 		for imp in component['subscribesTo']:
 			nname = imp
-			if (len(imp) == 2 and nnmae[1] == 'ros2'):
+			if (len(imp) == 2 and nname[1] == 'ros2'):
 				nname = imp[0]
 			else:
 				continue
@@ -516,51 +516,77 @@ if component['usingROS'] or component['usingROS2']:
 							else:
 								sub_data_map[p_name]['type'] = component_name + '::msg::' + sc.pascalcase(p['type'])
 							sub_data_map[p_name]['topic'] = interface['name']
-							cog.outl("<TABHERE>rclcpp::Subscription<"+sub_data_map[p_name]['type']+">::SharedPtr pub_"+p_name+";")
+							cog.outl("<TABHERE>rclcpp::Subscription<"+sub_data_map[p_name]['type']+">::SharedPtr sub_"+p_name+";")
 
-				cog.outl("<TABHERE>rclcpp::Node::SharedPtr node;\n")
+				cog.outl("\n")
+				for key in sub_data_map:
+					name = key
+					type = sub_data_map[key]['type']
+					topic = sub_data_map[key]['topic']
+					cog.outl("<TABHERE>"+type+" msg_"+name+";")
+
+				cog.outl("\n<TABHERE>rclcpp::Node::SharedPtr node;\n")
 				cog.outl("<TABHERE>Subscriber"+nname+"()\n<TABHERE>{")
 
 				cog.outl("<TABHERE><TABHERE>node = rclcpp::Node::make_shared(\"my_subscriber\");")
-				cog.outl("<TABHERE><TABHERE>// subscriber = node->create_subscription<data_type>(\"topic\", 10);")
 
 				for key in sub_data_map:
 					name = key
 					type = sub_data_map[key]['type']
 					topic = sub_data_map[key]['topic']
 					if (topic != ''):
-						cog.outl("<TABHERE><TABHERE>sub_"+name+" = node->create_subscription<"+type+">(\"+topic+\", 10);")
+						cog.outl("<TABHERE><TABHERE>sub_"+name+" = node->create_subscription<"+type+">(\""+topic+"\", 10);")
+					else:
+						cog.outl("<TABHERE><TABHERE>// sub_"+name+" = node->create_subscription<"+type+">(<topic>, 10);")
 
 				type_map = dict()
 				for type in module['types']:
 					if 'type' in type:
 						type_map[module['name'] + '::' + type['name']] = type['type']
 
-				cog.outl("<TABHERE>}")
-				cog.outl("<TABHERE>~Subscriber"+nname+"(){}")
+				cog.outl("<TABHERE>}\n")
+				cog.outl("<TABHERE>~Subscriber"+nname+"(){}\n")
+				cog.outl("private:\n")
 
 				import_types = []
 				recursive_import_types = []
 
+				"""
 				if (module['imports'] != ''):
 					import_types = DSLFactory().from_file (module['imports'])['types']
 				if (module['recursive_imports'] != ''):
 					recursive_import_types = DSLFactory().from_file (module['recursive_imports'])['types']
 
 				module['types'] += import_types + recursive_import_types
+				"""
+
+				component_name = sc.snakecase(component['name'])
+				for t in module['types']:
+					if t['type'] != 'dictionary':
+						d_type = ''
+						n = t['name'].split('::')[-1]
+						d_type = component_name + "::msg::" + sc.pascalcase(t['name'])
+						cog.outl("<TABHERE>void cb_"+n+"(const " + d_type + "::SharedPtr ros_msg) {}")
 
 				for interface in module['interfaces']:
-					for m in interface['methods']:
-						method = interface['methods'][m]
-						if isPub (method) and m in pub_data_map:
-							p_name = method['params'][0]['name']
-							t = method['params'][0]['type'] if ('::' in method['params'][0]['type']) else (module['name'] + '::' + method['params'][0]['type'])
-							cog.outl("<TABHERE>void "+method['name']+" ("+t+" "+p_name+") {")
-							cog.outl("<TABHERE><TABHERE>"+pub_data_map[m]['type']+" "+"ros_msg;")
-							cog.outl("<TABHERE><TABHERE>// convert the ICE data type into ROS message")
-							cog.outl("<TABHERE><TABHERE>pub_"+m+".publish(ros_msg);")
-							cog.outl("<TABHERE>}")
-				cog.outl("};")
+					for method in interface['methods']:
+						m = interface['methods'][method]
+						if isPub (m):
+							p = m['params'][0]
+							p_name = m['name']
+							d_type = ''
+							if p['type'] in ('float','int'):
+								d_type = "std_msgs::msg::"+sc.pascalcase(p['type']+"32")
+							elif p['type'] in ('uint8','uint16','uint32','uint64'):
+								d_type = "std_msgs::msg::"+sc.pascalcase("UInt"+p['type'].split('t')[1]+"32")
+							elif p['type'] in rosTypes:
+								d_type = "std_msgs::msg::"+sc.pascalcase(p['type'])
+							elif '::' in p['type']:
+								d_type = component_name+"::msg::"+sc.pascalcase(p['type'].split('::')[-1])
+							else:
+								d_type = component_name + '::msg::' + sc.pascalcase(p['type'])
+							cog.outl("<TABHERE>void cb_"+p_name+"(const "+d_type+"::SharedPtr ros_msg) {}")
+				cog.outl("};\n")
 
 	#CREANDO CLASES PARA LOS REQUIRES
 	for imp in component['requires']:
@@ -723,10 +749,13 @@ if 'implements' in component:
 sub_map = dict()
 if 'subscribesTo' in component:
 	for impa in component['subscribesTo']:
-		if type(impa) == str:
+		#print ("impa", type(impa))
+		"""
+		if type(impa) == 'str':
 			imp = impa
 		else:
-			imp = impa[0]
+		"""
+		imp = impa[0]
 		module = pool.moduleProviding(imp)
 		if module == None:
 			print ('\nCan\'t find module providing', imp, '\n')
@@ -756,35 +785,7 @@ if 'subscribesTo' in component:
 							# STR
 							paramStrA += delim + const + p['type'] + ' ' + ampersand + p['name']
 						cog.outl("<TABHERE>virtual " + method['return'] + ' ' + interface['name'] + "_" + method['name'] + '(' + paramStrA + ") = 0;")
-					"""
-					else:
-						for p in method['params']:
-							# delim
-							if paramStrA == '': delim = ''
-							else: delim = ', '
-							# decorator
-							ampersand = '&'
-							if p['decorator'] == 'out':
-								const = ''
-							else:
-								const = 'const '
-								ampersand = ''
-							if p['type'] in ('float','int'):
-								p['type'] = "std_msgs::"+p['type'].capitalize()+"32"
-							elif p['type'] in ('uint8','uint16','uint32','uint64'):
-								p['type'] = "std_msgs::UInt"+p['type'].split('t')[1]
-							elif p['type'] in rosTypes:
-								p['type'] = "std_msgs::"+p['type'].capitalize()
-							elif not '::' in p['type']:
-								p['type'] = module['name']+"ROS::"+p['type']
-							# STR
-							paramStrA += delim + p['type'] + ' ' + p['name']
-						if imp in component['iceInterfaces']:
-							cog.outl("<TABHERE>virtual void ROS" + method['name'] + '(' + paramStrA + ") = 0;")
-						else:
-							cog.outl("<TABHERE>virtual void " + method['name'] + '(' + paramStrA + ") = 0;")
-					"""
-				if not communicationIsIce(impa):
+				if not communicationIsIce(impa) and impa[1] == 'ros':
 					for t in module['types']:
 						if t['type'] != 'dictionary':
 							d_type = ''
@@ -817,6 +818,9 @@ if 'subscribesTo' in component:
 									sub_map[p_name]['data_type'] = module['name'] + 'ROS::' + p['type']
 								sub_map[p_name]['func_name'] = "cb_" + p_name
 								cog.outl("<TABHERE>virtual void cb_"+p_name+"("+sub_map[p_name]['data_type']+" ros_msg) = 0;")
+
+			if component['usingROS2']:
+				cog.outl("<TABHERE>Subscriber"+interface['name']+"* "+interface['name'].lower()+"_proxy;")
 
 ]]]
 [[[end]]]
@@ -901,8 +905,7 @@ if component['usingROS'] == True:
 	cog.outl("<TABHERE>ros::NodeHandle node;")
 for imp in component['subscribesTo']:
 	nname = imp
-	while type(nname) != type(''):
-		nname = nname[0]
+	nname = nname[0]
 	module = pool.moduleProviding(nname)
 	if module == None:
 		print ('\nCan\'t find module providing', nname, '\n')
