@@ -167,12 +167,9 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
 
     def generarH(idslFile, imported):
         idsl = DSLFactory().from_file(idslFile)
-        # os.system("rm -f "+outputPath + "/" + idsl['name'] + "ROS/msg/__init__.py")
-        # os.system("rm -f "+outputPath + "/" + idsl['name'] + "ROS/srv/__init__.py")
         for imp in idsl['types']:
             if imp['type'] in ['struct','sequence']:
                 for f in [ "SERVANT.MSG"]:
-                    # print ('name', imp['name'])
                     ofile = outputPath+"/msg/"+sc.pascalcase(imp['name']) + ".msg"
                     print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                     # Call cog
@@ -183,28 +180,6 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                         print('ERROR')
                         sys.exit(-1)
                     replaceTagsInFile(ofile)
-                    """
-                    commandCPP = "/opt/ros/melodic/lib/gencpp/gen_cpp.py " + ofile + " -Istd_msgs:/opt/ros/melodic/share/std_msgs/msg -I" + idsl['name'] + "ROS:" + outputPath
-                    commandPY  = "/opt/ros/melodic/lib/genpy/genmsg_py.py " + ofile + " -Istd_msgs:/opt/ros/melodic/share/std_msgs/msg -I" + idsl['name'] + "ROS:" + outputPath
-                    for impo in imported:
-                        if not impo == idsl['name']+"ROS":
-                            commandCPP = commandCPP + " -I" + impo + ":" + outputPath
-                            commandPY  = commandPY + " -I" + impo + ":" + outputPath
-                    if not os.path.exists(outputPath):
-                        create_directory(outputPath)
-                    commandCPP = commandCPP + " -p "+ idsl['name'] + "ROS -o " + outputPath + "/" + idsl['name'] + "ROS -e /opt/ros/melodic/share/gencpp"
-                    commandPY = commandPY + " -p "+ idsl['name'] + "ROS -o " + outputPath + "/" + idsl['name'] +"ROS/msg"
-                    if comp['language'].lower() == 'cpp':
-                        os.system(commandCPP)
-                    else:
-                        os.system(commandPY)
-                    try:
-                        fileInit = open(outputPath + "/" + idsl['name'] + "ROS/msg/__init__.py", 'a')
-                        fileInit.write("from ._"+imp['name']+" import *\n")
-                        fileInit.close()
-                    except:
-                        pass
-                    """
         for ima in comp['implements']+comp['requires']:
             im = ima
             if type(im) != type(''):
@@ -225,28 +200,6 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                                         print('ERROR')
                                         sys.exit(-1)
                                     replaceTagsInFile(ofile)
-                                    """
-                                    commandCPP = "/opt/ros/melodic/lib/gencpp/gen_cpp.py " +ofile+ " -Istd_msgs:/opt/ros/melodic/share/std_msgs/msg -Istd_srvs:/opt/ros/melodic/share/std_srv/cmake/../srv -I" + idsl['name'] + "ROS:" + outputPath
-                                    commandPY  = "/opt/ros/melodic/lib/genpy/gensrv_py.py " +ofile+ " -Istd_msgs:/opt/ros/melodic/share/std_msgs/msg -Istd_srvs:/opt/ros/kinetic/share/std_srv/cmake/../srv -I" + idsl['name'] + "ROS:" + outputPath
-                                    for impo in imported:
-                                        if not impo == idsl['name']+"ROS":
-                                            commandCPP = commandCPP + " -I" + impo + ":" + outputPath
-                                            commandPY  = commandPY + " -I" + impo + ":" + outputPath
-                                    if not os.path.exists(outputPath):
-                                        create_directory(outputPath)
-                                    commandCPP = commandCPP + " -p "+ idsl['name'] + "ROS -o "+ outputPath+"/"+idsl['name'] + "ROS -e /opt/ros/melodic/share/gencpp/cmake/.."
-                                    commandPY = commandPY + " -p "+ idsl['name'] + "ROS -o "+ outputPath+"/"+idsl['name'] +"ROS/srv"
-                                    if comp['language'].lower() == 'cpp':
-                                        os.system(commandCPP)
-                                    else:
-                                        os.system(commandPY)
-                                    try:
-                                        fileInit = open(outputPath + "/" + idsl['name'] + "ROS/srv/__init__.py", 'a')
-                                        fileInit.write("from ._"+interface['methods'][method]['name']+" import *\n")
-                                        fileInit.close()
-                                    except:
-                                        pass
-                                    """
                             else:
                                 print("error: ROS service with incorrect number of parameters. ROS only supports remote procedure calls of the form: void method(type inVar, out type outVar);")
                                 for param in enumerate(interface['methods'][method]['params']):
@@ -255,7 +208,6 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                         else:
                             print("error: service without params. Form is: void method(type inVar, out type outVar);")
                             sys.exit(-1)
-        # os.system("touch "+outputPath + "/" + idsl['name'] + "ROS/__init__.py")
         return idsl['name']+"ROS"
     try:
         idsl_imports = idsl['imports'].split ('#')
@@ -269,10 +221,7 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
     except:
         pass
 
-    #print ('idsl2', idslFile)
     generarH(idslFile, imported)
-    # os.system("rm "+outputPath+"/*.msg")
-    # os.system("rm "+outputPath+"/*.srv")
 
 #
 # Misc functions

@@ -723,40 +723,6 @@ if component['usingROS'] or component['usingROS2']:
 				cog.outl("<TABHERE>~ServiceClient"+nname+"(){}\n")
 			else:
 				cog.outl("<TABHERE>~Client"+nname+"(){}\n")
-			# theIdsl = pool.IDSLsModule(module)
-			# idsl = IDSLParsing.fromFileIDSL(theIdsl)
-			# idsl = DSLFactory().from_file(theIdsl)
-			"""
-			for interface in module['interfaces']:
-				if interface['name'] == nname:
-					for mname in interface['methods']:
-						method = interface['methods'][mname]
-						methodDef = "<TABHERE>bool "+mname
-						methodContent = module['name']+"ROS::"+mname+" srv;\n"
-						firstParam = True
-						array = []
-						for p in method['params']:
-							if p['type'] in ('float','int'):
-								temp = "std_msgs::"+p['type'].capitalize()+"32 "+p['name']
-								array.append (temp)
-							elif p['type'] in ('uint8','uint16','uint32','uint64'):
-								temp = "std_msgs::UInt"+p['type'].split('t')[1]+" "+p['name']
-								array.append (temp)
-							elif p['type'] in rosTypes:
-								temp = "std_msgs::"+p['type'].capitalize()+" "+p['name']
-								array.append (temp)
-							elif '::' in p['type']:
-								temp = p['type'].replace("::","ROS::")+" "+p['name']
-								array.append (temp)
-							else:
-								temp = module['name']+"ROS::"+p['type']+" "+p['name']
-								array.append (temp)
-
-						methodDef += "(" + (', '.join(array)) + ")"
-						methodContent = "<TABHERE>{\n<TABHERE><TABHERE>" + methodContent + "\n<TABHERE>}\n"
-						cog.outl(methodDef)
-						cog.outl(methodContent)
-			"""
 			cog.outl("};\n")
 ]]]
 [[[end]]]
@@ -858,12 +824,6 @@ if 'implements' in component:
 sub_map = dict()
 if 'subscribesTo' in component:
 	for impa in component['subscribesTo']:
-		#print ("impa", type(impa))
-		"""
-		if type(impa) == 'str':
-			imp = impa
-		else:
-		"""
 		imp = impa[0]
 		module = pool.moduleProviding(imp)
 		if module == None:
