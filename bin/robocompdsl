@@ -176,7 +176,7 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                     ofile = outputPath+"/msg/"+sc.pascalcase(imp['name']) + ".msg"
                     print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                     # Call cog
-                    run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + " -D structName=" + sc.pascalcase(imp['name']) +" -D theIDSL="+idslFile+ " -o " + ofile + " " + "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
+                    run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + " -D structName=" + imp['name'] +" -D theIDSL="+idslFile+ " -o " + ofile + " " + "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
                     run = run.split(' ')
                     ret = Cog().main(run)
                     if ret != 0:
@@ -215,7 +215,7 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                         if 'params' in interface['methods'][method]:
                             if isSrv (interface['methods'][method]):
                                 for f in [ "SERVANT.SRV"]:
-                                    ofile = outputPath+"/"+interface['methods'][method]['name'] + "." + f.split('.')[-1].lower()
+                                    ofile = outputPath+"/srv/"+sc.pascalcase(interface['methods'][method]['name']) + ".srv"
                                     print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                                     # Call cog
                                     run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + " -D methodName=" + interface['methods'][method]['name'] +" -D theIDSL="+idslFile+ " -o " + ofile + " " + "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
@@ -478,6 +478,10 @@ def main():
             if not pool.moduleProviding(interface_required):
                 raise rcExceptions.InterfaceNotFound(interface_required, pool.interfaces())
 
+        if component['usingROS2']:
+            for imp in component['imports']:
+                generateROS2Headers(imp, outputPath, component, args.include_dirs)
+
         if component['language'].lower() == 'cpp' or component['language'].lower() == 'cpp11':
             #
             # Check output directory
@@ -523,7 +527,7 @@ def main():
                 ifile = "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
                 if f != 'src/mainUI.ui' or component['gui'] is not None:
                     print('Generating', ofile)
-                    run = "cog.py -z -d -D theCDSL="+inputFile + " -D theIDSLs="+imports + ' -D theIDSLPaths='+ '#'.join(args.include_dirs) + " -o " + ofile + " " + ifile
+                    run = "cog.py -z -d -D theCDSL="+inputFile + " -D theIDSLs="+imports + ' -D theIDSLPaths='+ '#'.join(args.include_dirs) + ' -D outputPath='+outputPath+ " -o " + ofile + " " + ifile
                     run = run.split(' ')
                     ret = Cog().main(run)
                     if ret != 0:
@@ -651,10 +655,6 @@ def main():
         if component['usingROS']:
             for imp in component['imports']:
                 generateROSHeaders(imp, outputPath+"/src", component, args.include_dirs)
-
-        if component['usingROS2']:
-            for imp in component['imports']:
-                generateROS2Headers(imp, outputPath, component, args.include_dirs)
 
         # Code to launch diff tool on .new files to be compared with their old version
         if args.diff is not None:

@@ -5,6 +5,9 @@ sys.path.append('/home/ksakash/archives/robocomp/python')
 import cog
 import stringcase as sc
 
+from os import listdir
+from os.path import isfile, join
+
 includeDirectories = theIDSLPaths.split('#')
 
 
@@ -21,7 +24,7 @@ def SPACE(i=0):
 	cog.out('<S'+s+'>')
 
 from dsl_parsers.dsl_factory import DSLFactory
-from dsl_parsers.parsing_utils import isPub, IDSLPool
+from dsl_parsers.parsing_utils import isPub, IDSLPool, isSrv
 
 includeDirectories = theIDSLPaths.split('#')
 component = DSLFactory().from_file(theCDSL, include_directories=includeDirectories)
@@ -77,18 +80,41 @@ def getMsgList (module):
 
 	return msgList
 
+def getSrvList ():
+	mypath = outputPath + '/srv'
+	onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+	return onlyfiles
+
 if component['usingROS2']:
 	cog.outl("find_package(ament_cmake REQUIRED)")
-	cog.outl("find_package(rosidl_default_generators REQUIRED)")
+	cog.outl("find_package(rosidl_default_generators REQUIRED)\n")
 	cog.outl("rosidl_generate_interfaces(${PROJECT_NAME}")
+
+	"""
 	for interface in component['publishes'] + component['subscribesTo'] + component['implements'] + component['requires']:
 		interface = interface[0]
 		module = pool.moduleProviding(interface)
 		msgList = getMsgList (module)
-		# print ("msgList", msgList)
 		for msg in msgList:
 			cog.outl("<TABHERE>\"msg/"+msg+".msg\"")
-	cog.outl(")")
+	"""
+
+	def getMsgList ():
+		mypath = outputPath + '/msg'
+		onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+		return onlyfiles
+
+	msgList = getMsgList ()
+
+	for msgFile in msgList:
+		cog.outl("<TABHERE>\"msg/"+msgFile+"\"")
+
+	srvList = getSrvList ()
+
+	for srvFile in srvList:
+		cog.outl("<TABHERE>\"srv/"+srvFile+"\"")
+
+	cog.outl(")\n")
 
 	cog.outl("ament_export_dependencies (rosidl_default_runtime)")
 

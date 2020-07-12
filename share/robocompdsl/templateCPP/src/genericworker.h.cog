@@ -184,6 +184,8 @@ def getSrvIncludeListROS2 (module):
 
 if component['usingROS2']:
 	cog.outl('#include <rclcpp/rclcpp.hpp>')
+
+	"""
 	for interface in component['publishes'] + component['subscribesTo']:
 		interface = interface[0]
 		module = pool.moduleProviding(interface)
@@ -197,6 +199,34 @@ if component['usingROS2']:
 		srvIncludeList = getSrvIncludeListROS2 (module)
 		for include in srvIncludeList:
 			cog.outl(include)
+	"""
+
+	from os import listdir
+	from os.path import isfile, join
+
+	def getMsgList ():
+		mypath = outputPath + '/msg'
+		onlyfiles = [f.split('.')[0] for f in listdir(mypath) if isfile(join(mypath, f))]
+		return onlyfiles
+
+	msgList = getMsgList ()
+
+	for msgFile in msgList:
+		msg = sc.snakecase(msgFile)
+		component_name = sc.snakecase(component['name'])
+		cog.outl("#include <"+component_name+"/msg/"+msg+".hpp>")
+
+	def getSrvList ():
+		mypath = outputPath + '/srv'
+		onlyfiles = [f.split('.')[0] for f in listdir(mypath) if isfile(join(mypath, f))]
+		return onlyfiles
+
+	srvList = getSrvList ()
+
+	for srvFile in srvList:
+		srv = sc.snakecase(srvFile)
+		component_name = sc.snakecase(component['name'])
+		cog.outl("#include <"+component_name+"/srv/"+srv+".hpp>")
 
 try:
 	if isAGM1Agent(component):
@@ -230,6 +260,7 @@ for name in usingList:
 
 if component['usingROS2']:
 	cog.outl("using namespace std::chrono_literals;")
+	cog.outl("using namespace std::placeholders;")
 
 ]]]
 [[[end]]]
@@ -588,6 +619,61 @@ if component['usingROS'] or component['usingROS2']:
 							cog.outl("<TABHERE>void cb_"+p_name+"(const "+d_type+"::SharedPtr ros_msg) {}")
 				cog.outl("};\n")
 
+	if component['usingROS2']:
+		for imp in component['implements']:
+			nname = imp
+			if (len(imp) == 2 and nname[1] == 'ros2'):
+				nname = imp[0]
+			else:
+				continue
+			module = pool.moduleProviding(nname)
+			if module == None:
+				print ('\nCan\'t find module providing', nname, '\n')
+				sys.exit(-1)
+			if not communicationIsIce(imp) and imp[1] == 'ros2':
+				theIdsl = pool.IDSLsModule(module)
+				idsl = DSLFactory().from_file(theIdsl)
+
+				cog.outl("class Server"+nname+"\n{\npublic:")
+				component_name = camel_to_snake(component['name'])
+
+				for interface in module['interfaces']:
+					for method in interface['methods']:
+						m = interface['methods'][method]
+						if isSrv (m):
+							cog.outl("<TABHERE>rclcpp::Service<"+component_name+"::srv::"+sc.pascalcase(m['name'])+">::SharedPtr server_"+m['name']+";")
+
+				cog.outl("\n")
+
+				cog.outl("\n<TABHERE>rclcpp::Node::SharedPtr node;\n")
+				cog.outl("<TABHERE>Server"+nname+"()\n<TABHERE>{")
+
+				cog.outl("<TABHERE><TABHERE>node = rclcpp::Node::make_shared(\"my_subscriber\");")
+
+				for interface in module['interfaces']:
+					for method in interface['methods']:
+						m = interface['methods'][method]
+						if isSrv (m):
+							cog.outl("<TABHERE><TABHERE>server_"+m['name']+" = node->create_service<"+\
+							component_name+"::srv::"+sc.pascalcase(m['name'])+">(\""+m['name']\
+							+"\", std::bind (&Server"+interface['name']+"::"+m['name']+", this, _1, _2));")
+
+				cog.outl("<TABHERE>}\n")
+				cog.outl("<TABHERE>~Server"+nname+"(){}\n")
+				cog.outl("private:\n")
+
+				component_name = sc.snakecase(component['name'])
+
+				for interface in module['interfaces']:
+					for method in interface['methods']:
+						m = interface['methods'][method]
+						if isSrv (m):
+							cog.outl("<TABHERE>void "+m['name']+" (const std::shared_ptr<"+\
+							component_name+"::srv::"+sc.pascalcase(m['name'])+"::Request> req, "+\
+							"std::shared_ptr<"+component_name+"::srv::"+sc.pascalcase(m['name'])+\
+							"::Response> res) {}")
+				cog.outl("};\n")
+
 	#CREANDO CLASES PARA LOS REQUIRES
 	for imp in component['requires']:
 		nname = imp
@@ -598,25 +684,48 @@ if component['usingROS'] or component['usingROS2']:
 			print ('\nCan\'t find module providing', nname, '\n')
 			sys.exit(-1)
 		if not communicationIsIce(imp):
-			cog.outl("<TABHERE>//class for rosServiceClient")
-			cog.outl("class ServiceClient"+nname+"\n{\npublic:")
+			cog.outl("//class for rosServiceClient")
+			if imp[1] == 'ros':
+				cog.outl("class ServiceClient"+nname+"\n{\npublic:")
+			else:
+				cog.outl("class Client"+nname+"\n{\npublic:")
+
+			component_name = sc.snakecase(component['name'])
+
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
 					for mname in interface['methods']:
 						method = interface['methods'][mname]
-						cog.outl("<TABHERE>ros::ServiceClient srv_"+mname+";")
-			cog.outl("<TABHERE>ServiceClient"+nname+"(ros::NodeHandle *node)\n<TABHERE>{")
+						if imp[1] == 'ros':
+							cog.outl("<TABHERE>ros::ServiceClient srv_"+mname+";")
+						else:
+							cog.outl("<TABHERE>rclcpp::Client<"+component_name+"::srv::"+sc.pascalcase(mname)+">::SharedPtr client_"+mname+";")
+				if imp[1] == 'ros2':
+					cog.outl("\n<TABHERE>rclcpp::Node::SharedPtr node;\n")
+			if imp[1] == 'ros':
+				cog.outl("<TABHERE>ServiceClient"+nname+"(ros::NodeHandle *node)\n<TABHERE>{")
+			else:
+				cog.outl("<TABHERE>Client"+nname+"()\n<TABHERE>{")
+
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
+					if imp[1] == 'ros2':
+						cog.outl ("<TABHERE><TABHERE>node = rclcpp::Node::make_shared(\"my_client\");")
 					for mname in interface['methods']:
 						method = interface['methods'][mname]
 						s = "\""+mname+"\""
-						cog.outl("<TABHERE><TABHERE>srv_"+mname+" = node->serviceClient<"+module['name']+"ROS::"+mname+">(node->resolveName("+s+"), 1000);")
-			cog.outl("<TABHERE>}")
-			cog.outl("<TABHERE>~ServiceClient"+nname+"(){}")
-			theIdsl = pool.IDSLsModule(module)
+						if imp[1] == 'ros':
+							cog.outl("<TABHERE><TABHERE>srv_"+mname+" = node->serviceClient<"+module['name']+"ROS::"+mname+">(node->resolveName("+s+"), 1000);")
+						else:
+							cog.outl("<TABHERE><TABHERE>client_"+mname+" = node->create_client<"+component_name+"::srv::"+sc.pascalcase(mname)+">("+s+");")
+			cog.outl("<TABHERE>}\n")
+			if imp[1] == 'ros':
+				cog.outl("<TABHERE>~ServiceClient"+nname+"(){}\n")
+			else:
+				cog.outl("<TABHERE>~Client"+nname+"(){}\n")
+			# theIdsl = pool.IDSLsModule(module)
 			# idsl = IDSLParsing.fromFileIDSL(theIdsl)
-			idsl = DSLFactory().from_file(theIdsl)
+			# idsl = DSLFactory().from_file(theIdsl)
 			"""
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
@@ -648,7 +757,7 @@ if component['usingROS'] or component['usingROS2']:
 						cog.outl(methodDef)
 						cog.outl(methodContent)
 			"""
-			cog.outl("};")
+			cog.outl("};\n")
 ]]]
 [[[end]]]
 class GenericWorker :
@@ -740,7 +849,7 @@ if 'implements' in component:
 							# STR
 							paramStrA += delim + const + p['type'] + ' ' + ampersand + p['name']
 						cog.outl("<TABHERE>virtual " + method['return'] + ' ' + interface['name'] + "_" + method['name'] + '(' + paramStrA + ") = 0;")
-					else:
+					elif impa[1] == 'ros':
 						paramStrA = module['name'] +"ROS::"+method['name']+"::Request &req, "+module['name']+"ROS::"+method['name']+"::Response &res"
 						if imp in component['iceInterfaces']:
 							cog.outl("<TABHERE>virtual bool ROS" + method['name'] + '(' + paramStrA + ") = 0;")
@@ -930,12 +1039,18 @@ for imp in component['implements']:
 	if module == None:
 		print ('\nCan\'t find module providing', nname, '\n')
 		sys.exit(-1)
-	if not communicationIsIce(imp):
+	if not communicationIsIce(imp) and imp[1] == 'ros':
 		for interface in module['interfaces']:
 			if interface['name'] == nname:
 				for mname in interface['methods']:
 					method = interface['methods'][mname]
 					cog.outl("<TABHERE>ros::ServiceServer "+nname+"_"+mname+";")
+
+	if not communicationIsIce(imp) and imp[1] == 'ros2':
+		for interface in module['interfaces']:
+			if interface['name'] == nname:
+				cog.outl("<TABHERE>Server"+interface['name']+"* "+interface['name'].lower()+"_proxy;")
+
 if 'publishes' in component:
 	for publish in component['publishes']:
 		pubs = [p for p in publish]
@@ -954,7 +1069,10 @@ if 'requires' in component:
 			if req in component['iceInterfaces']:
 				cog.outl("<TABHERE>ServiceClient"+req+" *"+req.lower()+"_rosproxy;")
 			else:
-				cog.outl("<TABHERE>ServiceClient"+req+" *"+req.lower()+"_proxy;")
+				if require[1] == 'ros':
+					cog.outl("<TABHERE>ServiceClient"+req+" *"+req.lower()+"_proxy;")
+				else:
+					cog.outl("<TABHERE>Client"+req+" *"+req.lower()+"_proxy;")
 try:
 	if 'agmagent' in [ x.lower() for x in component['options'] ]:
 		cog.outl("<TABHERE>bool active;")

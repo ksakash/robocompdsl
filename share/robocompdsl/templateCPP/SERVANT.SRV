@@ -1,6 +1,8 @@
 [[[cog
 
 import sys
+import stringcase as sc
+
 sys.path.append('/home/ksakash/archives/robocomp/python')
 
 import cog
@@ -36,9 +38,7 @@ for interface in idsl['interfaces']:
 		if methodName == interface['methods'][method]['name'] and 'params' in interface['methods'][method]:
 			if isSrv (interface['methods'][method]):
 				for param in interface['methods'][method]['params']:
-					#print (param)
 					if param['decorator'] != 'out':
-						#for im in idsl['module']['contents']:
 						if param['type'] in ('sequence'):
 							if param['typeSequence'] in ('float','int'):
 								param['type'] = param['typeSequence'] +"32[]"
@@ -46,13 +46,11 @@ for interface in idsl['interfaces']:
 								param['type'] = im['typeSequence'] +"[]"
 						if param['type'] in ('float','int',):
 							param['type'] = param['type'] + "32"
-						str = param['type'] + " " + param['name']
-						#print (str)
-						cog.outl(str.replace("::", "ROS/"))
+						str = param['type'].split('::')[-1] + " " + sc.snakecase(param['name'])
+						cog.outl(str)
 				cog.outl("---")
 				for param in interface['methods'][method]['params']:
 					if param['decorator'] == 'out':
-						#for im in idsl['module']['contents']:
 						if param['type'] in ('sequence'):
 							if param['typeSequence'] in ('float','int'):
 								param['type'] = param['typeSequence'] +"32[]"
@@ -60,8 +58,8 @@ for interface in idsl['interfaces']:
 								param['type'] = im['typeSequence'] +"[]"
 						if param['type'] in ('float','int',):
 							param['type'] = param['type'] + "32"
-						str = param['type'] + " " + param['name']
-						cog.outl(str.replace("::", "ROS/"))
+						str = param['type'].split('::')[-1] + " " + sc.snakecase(param['name'])
+						cog.outl(str)
 				if interface['methods'][method]['return'] != 'void':
 					"""
 					if interface['methods'][method]['return'] in ('sequence'):
@@ -72,7 +70,10 @@ for interface in idsl['interfaces']:
 					"""
 					if interface['methods'][method]['return'] in ['float','int']:
 						interface['methods'][method]['return'] = interface['methods'][method]['return'] + "32"
-					str = interface['methods'][method]['return'] + " " + "response"
-					cog.outl(str.replace("::", "ROS/"))
+						str = interface['methods'][method]['return'].split('::')[-1] + " " + "response"
+						cog.outl(str)
+					else:
+						str = sc.pascalcase(interface['methods'][method]['return'].split('::')[-1]) + " " + "response"
+						cog.outl(str)
 ]]]
 [[[end]]]
