@@ -113,6 +113,7 @@ for name in usingList:
 
 if component['usingROS'] == True:
 	cog.outl('#include <ros/ros.h>')
+	print ("rosincludes", includeList)
 	for include in includeList:
 		cog.outl('#include <'+include+'.h>')
 	srvIncludes = {}
