@@ -21,6 +21,33 @@ def isSrv(method):
             paramWithOut = True
     return returnTypeVoid or paramWithOut
 
+def isTopicInterface (interface):
+    oneMethod = True if len (interface['methods']) == 1 else False
+
+    if not oneMethod:
+        return False
+
+    for m in interface['methods']:
+        method = interface['methods'][m]
+        return isPub (method)
+
+    return False
+
+def containsMap (method, idsl):
+    mapList = []
+    for t in idsl['types']:
+        if t['type'] == 'dictionary':
+            mapList.append (t['name'])
+
+    if method['return'] in mapList:
+        return True
+
+    for p in method['params']:
+        if p['type'] in mapList:
+            return True
+
+    return False
+
 def generateRecursiveImports(initial_idsls, include_directories=[]):
     new_idsls = []
     for idsl_path in initial_idsls:

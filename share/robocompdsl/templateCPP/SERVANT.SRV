@@ -36,7 +36,7 @@ for interface in idsl['interfaces']:
 	#if imp['type'] == 'interface':
 	for method in interface['methods']:
 		if methodName == interface['methods'][method]['name'] and 'params' in interface['methods'][method]:
-			if isSrv (interface['methods'][method]):
+			if isSrv (interface['methods'][method]) or True:
 				for param in interface['methods'][method]['params']:
 					if param['decorator'] != 'out':
 						if param['type'] in ('sequence'):

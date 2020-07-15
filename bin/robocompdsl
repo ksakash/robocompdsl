@@ -17,7 +17,7 @@ from cogapp import Cog
 sys.path.append("/home/ksakash/archives/robocomp/python")
 from dsl_parsers.dsl_factory import DSLFactory
 from dsl_parsers.parsing_utils import communicationIsIce, IDSLPool
-from dsl_parsers.parsing_utils import gimmeIDSL
+from dsl_parsers.parsing_utils import gimmeIDSL, isTopicInterface, containsMap
 
 import rcExceptions
 import sys
@@ -99,9 +99,13 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
                 im = im[0]
             if not communicationIsIce(ima):
                 for interface in idsl['interfaces']:
+                    if isTopicInterface (interface):
+                        continue
                     for method in interface['methods']:
+                        if containsMap (interface['methods'][method], idsl):
+                            continue
                         if 'params' in interface['methods'][method]:
-                            if isSrv (interface['methods'][method]):
+                            if isSrv (interface['methods'][method]) or True:
                                 for f in [ "SERVANT.SRV"]:
                                     ofile = outputPath+"/"+interface['methods'][method]['name'] + "." + f.split('.')[-1].lower()
                                     print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
@@ -189,9 +193,13 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                 im = im[0]
             if not communicationIsIce(ima):
                 for interface in idsl['interfaces']:
+                    if isTopicInterface (interface):
+                        continue
                     for method in interface['methods']:
+                        if containsMap (interface['methods'][method], idsl):
+                            continue
                         if 'params' in interface['methods'][method]:
-                            if isSrv (interface['methods'][method]):
+                            if isSrv (interface['methods'][method]) or True:
                                 for f in [ "SERVANT.SRV"]:
                                     ofile = outputPath+"/srv/"+sc.pascalcase(interface['methods'][method]['name']) + ".srv"
                                     print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
@@ -466,7 +474,7 @@ def main():
                              'src/CMakeListsSpecific.txt', 'src/mainUI.ui', 'src/specificmonitor.h', \
                              'src/specificmonitor.cpp', 'README.md', 'etc/config']
             for f in files:
-                if f == 'package.xml':
+                if f == 'package.xml'and component['usingROS2']:
                     ofile = outputPath + '/' + f
                     ifile = "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
                     os.system("cp " + ifile + " " + ofile)
@@ -632,7 +640,6 @@ def main():
                     print("Binary equal files %s and %s"%(o_file, n_file))
 
     elif inputFile.endswith(".idsl"):
-        # idsl = IDSLParsing.fromFileIDSL(inputFile)
         print('Generating ICE file ', outputPath)
         # Call cog
         run = "cog.py -z -d" + " -D theIDSL="+inputFile + ' -D theIDSLPaths='+ '#'.join(args.include_dirs) +" -o " + outputPath + "/home/ksakash/archives/robocomp/share/robocompdsl/TEMPLATE.ICE"

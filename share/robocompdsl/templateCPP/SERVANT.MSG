@@ -40,6 +40,11 @@ for imp in idsl['types']:
 								cog.outl(customType['typeSequence'].split('/')[-1] +"32[] " + sc.snakecase(structVar[1]))
 							else:
 								cog.outl(customType['typeSequence'].replace('/','ROS/') +"32[] " + structVar[1])
+						elif customType['typeSequence'] == 'string':
+							if rostype == 'ros2':
+								cog.outl(customType['typeSequence'].split('/')[-1] +"[] " + sc.snakecase(structVar[1]))
+							else:
+								cog.outl(customType['typeSequence'].replace('/','ROS/') +"[] " + structVar[1])
 						else:
 							if rostype == 'ros2':
 								cog.outl(sc.pascalcase(customType['typeSequence'].split('/')[-1]) +"[] " + sc.snakecase(structVar[1]))
@@ -74,6 +79,11 @@ for imp in idsl['types']:
 				msg = imp['typeSequence'].split('::')[-1] +"32[] " + sc.snakecase(structName)
 			else:
 				msg = imp['typeSequence'] +"32[] " + structName
+		elif imp['typeSequence'] == 'string':
+			if rostype == 'ros2':
+				msg = imp['typeSequence'].split('::')[-1] +"[] "+ sc.snakecase(structName)
+			else:
+				msg = imp['typeSequence'] +"[] "+ structName
 		else:
 			if rostype == 'ros2':
 				msg = sc.pascalcase(imp['typeSequence'].split('::')[-1]) +"[] "+ sc.snakecase(structName)

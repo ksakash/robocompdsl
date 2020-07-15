@@ -33,7 +33,8 @@ def snake_to_camel(word):
     return ''.join(x.capitalize() or '_' for x in word.split('_'))
 
 from dsl_parsers.dsl_factory import DSLFactory
-from dsl_parsers.parsing_utils import getNameNumber, communicationIsIce, IDSLPool, isAGM1Agent,isAGM2Agent
+from dsl_parsers.parsing_utils import getNameNumber, communicationIsIce, IDSLPool, isAGM1Agent, \
+									  isAGM2Agent, containsMap, isTopicInterface
 includeDirectories = theIDSLPaths.split('#')
 component = DSLFactory().from_file(theCDSL, include_directories=includeDirectories)
 sm = DSLFactory().from_file(component['statemachine'])
@@ -639,9 +640,13 @@ if component['usingROS'] or component['usingROS2']:
 				component_name = camel_to_snake(component['name'])
 
 				for interface in module['interfaces']:
+					if isTopicInterface (interface):
+						continue
 					for method in interface['methods']:
 						m = interface['methods'][method]
-						if isSrv (m):
+						if containsMap (m, module):
+							continue
+						if isSrv (m) or True:
 							cog.outl("<TABHERE>rclcpp::Service<"+component_name+"::srv::"+sc.pascalcase(m['name'])+">::SharedPtr server_"+m['name']+";")
 
 				cog.outl("\n")
@@ -652,9 +657,13 @@ if component['usingROS'] or component['usingROS2']:
 				cog.outl("<TABHERE><TABHERE>node = rclcpp::Node::make_shared(\"my_subscriber\");")
 
 				for interface in module['interfaces']:
+					if isTopicInterface (interface):
+						continue
 					for method in interface['methods']:
 						m = interface['methods'][method]
-						if isSrv (m):
+						if containsMap (m, module):
+							continue
+						if isSrv (m) or True:
 							cog.outl("<TABHERE><TABHERE>server_"+m['name']+" = node->create_service<"+\
 							component_name+"::srv::"+sc.pascalcase(m['name'])+">(\""+m['name']\
 							+"\", std::bind (&Server"+interface['name']+"::"+m['name']+", this, _1, _2));")
@@ -666,9 +675,13 @@ if component['usingROS'] or component['usingROS2']:
 				component_name = sc.snakecase(component['name'])
 
 				for interface in module['interfaces']:
+					if isTopicInterface (interface):
+						continue
 					for method in interface['methods']:
 						m = interface['methods'][method]
-						if isSrv (m):
+						if containsMap (m, module):
+							continue
+						if isSrv (m) or True:
 							cog.outl("<TABHERE>void "+m['name']+" (const std::shared_ptr<"+\
 							component_name+"::srv::"+sc.pascalcase(m['name'])+"::Request> req, "+\
 							"std::shared_ptr<"+component_name+"::srv::"+sc.pascalcase(m['name'])+\
@@ -697,12 +710,16 @@ if component['usingROS'] or component['usingROS2']:
 				if interface['name'] == nname:
 					for mname in interface['methods']:
 						method = interface['methods'][mname]
+						if containsMap (method, module):
+							continue
 						if imp[1] == 'ros':
 							cog.outl("<TABHERE>ros::ServiceClient srv_"+mname+";")
 						else:
 							cog.outl("<TABHERE>rclcpp::Client<"+component_name+"::srv::"+sc.pascalcase(mname)+">::SharedPtr client_"+mname+";")
-				if imp[1] == 'ros2':
-					cog.outl("\n<TABHERE>rclcpp::Node::SharedPtr node;\n")
+
+			if imp[1] == 'ros2':
+				cog.outl("\n<TABHERE>rclcpp::Node::SharedPtr node;\n")
+
 			if imp[1] == 'ros':
 				cog.outl("<TABHERE>ServiceClient"+nname+"(ros::NodeHandle *node)\n<TABHERE>{")
 			else:
@@ -714,6 +731,8 @@ if component['usingROS'] or component['usingROS2']:
 						cog.outl ("<TABHERE><TABHERE>node = rclcpp::Node::make_shared(\"my_client\");")
 					for mname in interface['methods']:
 						method = interface['methods'][mname]
+						if containsMap (method, module):
+							continue
 						s = "\""+mname+"\""
 						if imp[1] == 'ros':
 							cog.outl("<TABHERE><TABHERE>srv_"+mname+" = node->serviceClient<"+module['name']+"ROS::"+mname+">(node->resolveName("+s+"), 1000);")
