@@ -1,0 +1,98 @@
+[[[cog
+
+import sys
+import stringcase as sc
+
+sys.path.append('/home/ksakash/archives/robocomp/python')
+
+import cog
+def A():
+	cog.out('<@@<')
+def Z():
+	cog.out('>@@>')
+def TAB():
+	cog.out('<TABHERE>')
+def SPACE(i=0):
+	s = ''
+	if i>0:
+		s = str(i)
+	cog.out('<S'+s+'>')
+
+ice2rosMap = dict()
+ice2rosMap['bool'] = 'bool'
+ice2rosMap['byte'] = 'int8'
+ice2rosMap['short'] = 'int16'
+ice2rosMap['int'] = 'int32'
+ice2rosMap['long'] = 'int64'
+ice2rosMap['float'] = 'float32'
+ice2rosMap['double'] = 'float64'
+ice2rosMap['string'] = 'string'
+
+from dsl_parsers.dsl_factory import DSLFactory
+from dsl_factory.parsing_utils import isTopicInterface, isSrv
+
+idsl = DSLFactory().from_file (theIDSL)
+
+for interface in idsl['interfaces']:
+    if not isTopicInterface (interface):
+        for method in interface['methods']:
+            if methodName == interface['methods'][method]['name'] and 'params' in interface['methods'][method]:
+                for param in interface['methods'][method]['params']:
+                    if param['decorator'] != 'out':
+                        if param['type'] in ('sequence'):
+                            if param['typeSequence'] in ice2rosMap:
+                                if rostype == 'ros2':
+                                    cog.outl (ice2rosMap[param['typeSequence']]+"[] "+sc.snakecase(param['name']))
+                                else:
+                                    cog.outl (ice2rosMap[param['typeSequence']]+"[] "+param['name'])
+                            else:
+                                if rostype == 'ros2':
+                                    cog.outl (sc.pascalcase(param['typeSequence'].split('::')[-1]) +"[] "+sc.snakecase(param['name']))
+                                else:
+                                    cog.outl (param['typeSequence'].replace('::', 'ROS/')+"[] "+param['name'])
+                        elif param['type'] in ice2rosMap:
+                            if rostype == 'ros2':
+                                cog.outl (ice2rosMap[param['type']]+" "+sc.snakecase(param['name']))
+                            else:
+                                cog.outl (ice2rosMap[param['type']]+" "+param['name'])
+                        else:
+                            if rostype == 'ros2':
+                                cog.outl (sc.pascalcase(param['type'].split('::')[-1]) +" "+sc.snakecase(param['name']))
+                            else:
+                                cog.outl (param['type'].replace('::', 'ROS/')+" "+param['name'])
+                cog.outl("---")
+                for param in interface['methods'][method]['params']:
+                    if param['decorator'] == 'out':
+                        if param['type'] in ('sequence'):
+                            if param['typeSequence'] in ice2rosMap:
+                                if rostype == 'ros2':
+                                    cog.outl (ice2rosMap[param['typeSequence']]+"[] "+sc.snakecase(param['name']))
+                                else:
+                                    cog.outl (ice2rosMap[param['typeSequence']]+"[] "+param['name'])
+                            else:
+                                if rostype == 'ros2':
+                                    cog.outl (sc.pascalcase(param['typeSequence'].split('::')[-1]) +"[] "+sc.snakecase(param['name']))
+                                else:
+                                    cog.outl (param['typeSequence'].replace('::', 'ROS/')+"[] "+param['name'])
+                        elif param['type'] in ice2rosMap:
+                            if rostype == 'ros2':
+                                cog.outl (ice2rosMap[param['type']]+" "+sc.snakecase(param['name']))
+                            else:
+                                cog.outl (ice2rosMap[param['type']]+" "+param['name'])
+                        else:
+                            if rostype == 'ros2':
+                                cog.outl (sc.pascalcase(param['type'].split('::')[-1]) +" "+sc.snakecase(param['name']))
+                            else:
+                                cog.outl (param['type'].replace('::', 'ROS/')+" "+param['name'])
+                if interface['methods'][method]['return'] != 'void':
+                    r = interface['methods'][method]['return']
+
+                    if r in ice2rosMap:
+                        cog.outl (ice2rosMap[r]+" "+"response")
+                    else:
+                        is rostype == 'ros2':
+                            cog.outl (sc.pascalcase(r.split('::')[-1])+" "+"response")
+                        else:
+                            cog.outl (r.replace('::', 'ROS/')+" "+"response")
+]]]
+[[[end]]]

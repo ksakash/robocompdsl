@@ -17,8 +17,6 @@ def SPACE(i=0):
 		s = str(i)
 	cog.out('<S'+s+'>')
 
-
-#from dsl_parsers.parsing_utils import gimmeIDSLStruct
 from dsl_parsers.dsl_factory import DSLFactory
 customTypesList = []
 
