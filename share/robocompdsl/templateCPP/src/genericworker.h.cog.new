@@ -7,7 +7,7 @@ def getSrvList ():
 def makePublisherROS1 ():
     pass
 
-def makeSubscriberROS1 ();
+def makeSubscriberROS1 ():
     pass
 
 def makeServerROS1 ():
@@ -70,7 +70,7 @@ def makePublisherROS2 (interface, pool):
 
     cog.outl ("};\n")
 
-def makeSubscriberROS2 ();
+def makeSubscriberROS2 ():
     interface_name = interface['name']
     module = pool.moduleProviding (interface_name)
     module_name = module['name']
@@ -102,7 +102,54 @@ def makeSubscriberROS2 ();
     cog.outl ("};\n")
 
 def makeServerROS2 ():
-    pass
+    interface_name = interface['name']
+    module = pool.moduleProviding (interface_name)
+    module_name = module['name']
+
+    t_map = {}
+    component_name = ''
+    prf = component_name + '::srv::'
+
+    for intf in module['interfaces']:
+        if intf['name'] == interface_name and not isTopicInterface (intf):
+            for m in intf['methods']:
+                t_map[m] = prf + sc.pascalcase (m)
+
+    cog.outl ("Server" + interface_name + " {\n")
+    cog.outl ("public:\n")
+    # servers declaration
+    srv_declaration = "\trclcpp::Server<{}> server_{};"
+    for key in t_map:
+        name = key
+        data_type = t_map[name]
+        cog.outl (srv_declaration.format (data_type, name))
+
+    # ros2 node
+    cog.outl ("\n\trclcpp::Node::SharedPtr node;\n")
+
+    cog.outl ("Server" + interface_name + " () {\n")
+    # ros2 node initialization
+    cog.outl ("\t\tnode = rclcpp::Node::make_shared (\"my_server\")\n")
+
+    # server initialization
+    server_definition = \
+        "\t\tserver_{} = rclcpp->create_service<{}>(\"{}\", std::bind(&Server{}::{}, this, _1, _2));"
+    for key in t_map:
+        name = key
+        data_type = t_map[name]
+        cog.outl (server_definition.format (name, data_type, name, name))
+
+    cog.outl ("}\n")
+    cog.outl ("~Server" + interface_name + " () {}\n")
+    cog.outl ("private:\n")
+    # server callback
+    server_cb = "\tvoid {} (const std::shared_ptr<{}::Response>, std::shared_ptr<{}::Request>)"
+    for key in t_map:
+        name = key
+        data_type = t_map[name]
+        cog.outl (server_cb.format (name, data_type) + " " + "{}")
+
+    cog.outl ("};\n")
 
 def makeClientROS2 ():
     pass
@@ -111,7 +158,41 @@ includeDirectories = theIDSLPaths.split('#')
 component = DSLFactory().from_file(theCDSL, include_directories=includeDirectories)
 pool = IDSLPool(theIDSLs, includeDirectories)
 
+def getROSMsgList ():
+    pass
+
+def getROSSrvList ():
+    pass
+
 # ICE and ROS headers
+if component['usingROS']:
+    pass
+
+def getROS2MsgList ();
+    mypath = outputPath + '/msg'
+    onlyfiles = [f.split('.')[0] for f in listdir(mypath) if isfile(join(mypath, f))]
+    return onlyfiles
+
+def getROS2SrvList ():
+    mypath = outputPath + '/srv'
+    onlyfiles = [f.split('.')[0] for f in listdir(mypath) if isfile(join(mypath, f))]
+    return onlyfiles
+
+if component['usingROS2']:
+	msgList = getROS2MsgList ()
+
+	for msgFile in msgList:
+		msg = sc.snakecase(msgFile)
+		component_name = sc.snakecase(component['name'])
+		cog.outl("#include <"+component_name+"/msg/"+msg+".hpp>")
+
+	srvList = getROS2SrvList ()
+
+	for srvFile in srvList:
+		srv = sc.snakecase(srvFile)
+		component_name = sc.snakecase(component['name'])
+		cog.outl("#include <"+component_name+"/srv/"+srv+".hpp>")
+
 # ICE independent code
 
 # ROS code in form of a class
@@ -143,7 +224,5 @@ if interface in component['requires']:
             makeClientROS1 ()
         else:
             makeClientROS2 ()
-
-
 
 # mix of ROS and ICE
