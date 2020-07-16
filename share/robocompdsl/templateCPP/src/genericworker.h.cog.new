@@ -1,0 +1,149 @@
+def getMsgList ():
+    pass
+
+def getSrvList ():
+    pass
+
+def makePublisherROS1 ():
+    pass
+
+def makeSubscriberROS1 ();
+    pass
+
+def makeServerROS1 ():
+    pass
+
+def makeClientROS1 ():
+    pass
+
+def makePublisherROS2 (interface, pool):
+    interface_name = interface['name']
+    module = pool.moduleProviding (interface_name)
+    module_name = module['name']
+
+    t_map = {}
+    component_name = ''
+    prf = component_name + '::msg::'
+
+    for t in module['types']:
+        if t['type'] != 'dictionary':
+            t_map[t['name']] = prf + sc.pascalcase (t['type'])
+
+    for intf in module['interfaces']:
+        if intf['name'] == interface_name and isTopicInterface (intf):
+            pass
+
+    cog.outl ("Publisher" + interface_name + " {\n")
+    cog.outl ("public:\n")
+
+    # publishers
+    pub_declration = "\trclcpp::Publisher<{}>::SharedPtr pub_{};"
+    for key in t_map:
+        name = key
+        type = t_map[name]
+        cog.outl (pub_declration.format (type, name))
+
+    # ros2 node
+    cog.outl ("\n\trclcpp::Node::SharedPtr node;\n")
+
+    cog.outl ("\tPublisher" + interface_name + " () {\n")
+
+    # ros2 node initialization
+    cog.outl ("node = rclcpp::Node::make_shared ("my_publisher");\n")
+
+    # publisher initialization
+    pub_definition = "\t\tpub_{} = node->create_publisher<{}>(\"{}\", 10);"
+    for key in t_map:
+        name = key
+        type = t_map[name]
+        cog.outl (pub_definition.format (name, type, name))
+
+    cog.outl ("\n\t}\n")
+    cog.outl ("\t~Publisher" + interface_name + " () {}\n")
+
+    # publish functions
+    pub_func = "\tvoid pub_{} (const {}::SharedPtr msg)"
+    for key in t_map:
+        name = key
+        type = t_map[name]
+        cog.outl (pub_func.format (name, type) + " " + "{}\n")
+
+    cog.outl ("};\n")
+
+def makeSubscriberROS2 ();
+    interface_name = interface['name']
+    module = pool.moduleProviding (interface_name)
+    module_name = module['name']
+
+    t_map = {}
+    component_name = ''
+    prf = component_name + '::msg::'
+
+    for t in module['types']:
+        if t['type'] != 'dictionary':
+            t_map[t['name']] = prf + sc.pascalcase (t['type'])
+
+    for intf in module['interfaces']:
+        if intf['name'] == interface_name and isTopicInterface (intf):
+            pass
+
+    cog.outl ("Publisher" + interface_name + " {\n")
+    cog.outl ("public:\n")
+    # subscribers
+    # ros2 node
+    # ros2 data types
+    cog.outl ("Publisher" + interface_name + " () {\n")
+    # ros2 node initialization
+    # subscriber initialization
+    cog.outl ("}\n")
+    cog.outl ("~Publisher" + interface_name + " () {}\n")
+    cog.outl ("private:\n")
+    # subscriber callback
+    cog.outl ("};\n")
+
+def makeServerROS2 ():
+    pass
+
+def makeClientROS2 ():
+    pass
+
+includeDirectories = theIDSLPaths.split('#')
+component = DSLFactory().from_file(theCDSL, include_directories=includeDirectories)
+pool = IDSLPool(theIDSLs, includeDirectories)
+
+# ICE and ROS headers
+# ICE independent code
+
+# ROS code in form of a class
+if interface in component['publishes']:
+    if not communicationIsIce (interface):
+        if interface[1] == 'ros':
+            makePublisherROS1 (interface, pool)
+        else:
+            makePublisherROS2 ()
+
+if interface in component['subscribesTo']:
+    if not communicationIsIce (interface):
+        if interface[1] == 'ros':
+            makeSubscriberROS1 ()
+        else:
+            makeSubscriberROS2 ()
+
+if interface in component['implements']:
+    if not communicationIsIce (interface):
+        if interface[1] == 'ros':
+            makeServerROS1 ()
+        else:
+            makeServerROS2 ()
+
+
+if interface in component['requires']:
+    if not communicationIsIce (interface):
+        if interface[1] == 'ros':
+            makeClientROS1 ()
+        else:
+            makeClientROS2 ()
+
+
+
+# mix of ROS and ICE

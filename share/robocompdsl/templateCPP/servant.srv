@@ -29,7 +29,7 @@ ice2rosMap['double'] = 'float64'
 ice2rosMap['string'] = 'string'
 
 from dsl_parsers.dsl_factory import DSLFactory
-from dsl_factory.parsing_utils import isTopicInterface, isSrv
+from dsl_parsers.parsing_utils import isTopicInterface, isSrv
 
 idsl = DSLFactory().from_file (theIDSL)
 
@@ -90,7 +90,7 @@ for interface in idsl['interfaces']:
                     if r in ice2rosMap:
                         cog.outl (ice2rosMap[r]+" "+"response")
                     else:
-                        is rostype == 'ros2':
+                        if rostype == 'ros2':
                             cog.outl (sc.pascalcase(r.split('::')[-1])+" "+"response")
                         else:
                             cog.outl (r.replace('::', 'ROS/')+" "+"response")

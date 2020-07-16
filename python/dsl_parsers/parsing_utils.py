@@ -27,11 +27,13 @@ def isTopicInterface (interface):
     if not oneMethod:
         return False
 
+    ret = True
+
     for m in interface['methods']:
         method = interface['methods'][m]
-        return isPub (method)
+        ret = ret and isPub (method)
 
-    return False
+    return ret
 
 def containsMap (method, idsl):
     mapList = []
@@ -176,7 +178,6 @@ def getNameNumber(aalist_):
                 ret.append([k.split('#'), str(cont)])
             else:
                 ret.append([k.split('#'), ''])
-    # print (ret)
     return ret
 
 def decoratorAndType_to_const_ampersand(decorator, vtype, modulePool, cpp11=False):

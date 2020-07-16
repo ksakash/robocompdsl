@@ -25,6 +25,14 @@ def isPub(method):
 			break
 	return returnTypeVoid and (not paramWithOut) and (not moreThanOne)
 
+def isSrv(method):
+    returnTypeVoid = (method['return'] != 'void')
+    paramWithOut = False
+    for param in method['params']:
+        if param['decorator'] == 'out':
+            paramWithOut = True
+    return returnTypeVoid or paramWithOut
+
 def camel_to_snake(name):
   name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
   return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
@@ -114,7 +122,6 @@ for name in usingList:
 
 if component['usingROS'] == True:
 	cog.outl('#include <ros/ros.h>')
-	print ("rosincludes", includeList)
 	for include in includeList:
 		cog.outl('#include <'+include+'.h>')
 	srvIncludes = {}
@@ -128,7 +135,8 @@ if component['usingROS'] == True:
 			for interface in module['interfaces']:
 				if interface['name'] == im:
 					for mname in interface['methods']:
-						srvIncludes[mname] = '#include <'+module['name']+'ROS/'+mname+'.h>'
+						if not containsMap (interface['methods'][mname], module):
+							srvIncludes[mname] = '#include <'+module['name']+'ROS/'+mname+'.h>'
 	for imp in component['implements']:
 		if type(imp) == str:
 			im = imp
@@ -139,69 +147,13 @@ if component['usingROS'] == True:
 			for interface in module['interfaces']:
 				if interface['name'] == im:
 					for mname in interface['methods']:
-						srvIncludes[mname] = '#include <'+module['name']+'ROS/'+mname+'.h>'
+						if not containsMap (interface['methods'][mname], module):
+							srvIncludes[mname] = '#include <'+module['name']+'ROS/'+mname+'.h>'
 	for srv in srvIncludes.values():
 		cog.outl(srv)
 
-def getMsgIncludeListROS2 (module):
-	msgIncludeList = []
-	component_name = camel_to_snake(component['name'])
-	for t in module['types']:
-		if t['type'] != 'dictionary':
-			msgIncludeList.append("#include <"+component_name+"/msg/"+camel_to_snake(t['name'].split('::')[-1])+".hpp>")
-
-	for interface in module['interfaces']:
-		for method in interface['methods']:
-			m = interface['methods'][method]
-			if isPub (m):
-				p = m['params'][0]
-				if p['type'] in ('float','int'):
-					msgIncludeList.append("#include <std_msgs/msg/"+camel_to_snake(p['type']+"32")+".hpp>")
-				elif p['type'] in ('uint8','uint16','uint32','uint64'):
-					msgIncludeList.append("#include <std_msgs/msg/"+camel_to_snake("UInt"+p['type'].split('t')[1]+"32")+".hpp>")
-				elif p['type'] in rosTypes:
-					msgIncludeList.append("#include <std_msgs/msg/"+camel_to_snake(p['type'])+".hpp>")
-				elif '::' in p['type']:
-					msgIncludeList.append("#include <"+component_name+"/msg/"+camel_to_snake(p['type'].split('::')[-1])+".hpp>")
-				else:
-					msgIncludeList.append("#include <"+component_name+"/msg/"+camel_to_snake(p['type'])+".hpp>")
-	return msgIncludeList
-
-def isSrv(method):
-    returnTypeVoid = (method['return'] != 'void')
-    paramWithOut = False
-    for param in method['params']:
-        if param['decorator'] == 'out':
-            paramWithOut = True
-    return returnTypeVoid or paramWithOut
-
-def getSrvIncludeListROS2 (module):
-	srvIncludeList = []
-	component_name = camel_to_snake(component['name'])
-	for interface in module['interfaces']:
-		for method in interface['methods']:
-			m = interface['methods'][method]
-			if isSrv (m):
-				srvIncludeList.append ("#include <"+component_name+"/srv/"+camel_to_snake(method)+".hpp>")
-
 if component['usingROS2']:
 	cog.outl('#include <rclcpp/rclcpp.hpp>')
-
-	"""
-	for interface in component['publishes'] + component['subscribesTo']:
-		interface = interface[0]
-		module = pool.moduleProviding(interface)
-		msgIncludeList = getMsgIncludeListROS2 (module)
-		for include in msgIncludeList:
-			cog.outl(include)
-
-	for interface in (component['requires'] + component['implements']):
-		interface = interface[0]
-		module = pool.moduleProviding(interface)
-		srvIncludeList = getSrvIncludeListROS2 (module)
-		for include in srvIncludeList:
-			cog.outl(include)
-	"""
 
 	from os import listdir
 	from os.path import isfile, join
