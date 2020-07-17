@@ -14,7 +14,7 @@ def TAB():
 
 
 from dsl_parsers.dsl_factory import DSLFactory
-from dsl_parsers.parsing_utils import getNameNumber, communicationIsIce, IDSLPool
+from dsl_parsers.parsing_utils import getNameNumber, communicationIsIce, IDSLPool, containsMap
 includeDirectories = theIDSLPaths.split('#')
 component = DSLFactory().from_file(theCDSL, include_directories=includeDirectories)
 sm = DSLFactory().from_file(component['statemachine'])
@@ -312,11 +312,13 @@ if component['usingROS'] or component['usingROS2']:
 			for interface in module['interfaces']:
 				if interface['name'] == nname:
 					for mname in interface['methods']:
-						s = "\""+mname+"\""
-						if nname in component['iceInterfaces']:
-							cog.outl("<TABHERE>"+nname+"_"+mname+" = node.advertiseService("+s+", &GenericWorker::ROS"+mname+", this);")
-						else:
-							cog.outl("<TABHERE>"+nname+"_"+mname+" = node.advertiseService("+s+", &GenericWorker::"+mname+", this);")
+						method = interface['methods'][mname]
+						if not containsMap (method, module):
+							s = "\""+mname+"\""
+							if nname in component['iceInterfaces']:
+								cog.outl("<TABHERE>"+nname+"_"+mname+" = node.advertiseService("+s+", &GenericWorker::ROS"+mname+", this);")
+							else:
+								cog.outl("<TABHERE>"+nname+"_"+mname+" = node.advertiseService("+s+", &GenericWorker::"+mname+", this);")
 
 		if not communicationIsIce(imp) and imp[1] == 'ros2':
 			for interface in module['interfaces']:

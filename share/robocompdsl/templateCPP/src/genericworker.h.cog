@@ -297,7 +297,7 @@ if component['usingROS'] or component['usingROS2']:
 			for interface in module['interfaces']:
 				for method in interface['methods']:
 					m = interface['methods'][method]
-					if isPub (m):
+					if isPub (m) and not containsMap (m, module):
 						p = m['params'][0]
 						p_name = m['name']
 						pub_data_map[p_name] = dict()
@@ -353,9 +353,9 @@ if component['usingROS'] or component['usingROS2']:
 				topic = pub_data_map[key]['topic']
 				if (topic != ''):
 					if component['usingROS']:
-						cog.outl("<TABHERE><TABHERE>pub_"+name+" = node->advertise<"+type+">(node->resolveName("+topic+"), 1000);")
+						cog.outl("<TABHERE><TABHERE>pub_"+name+" = node->advertise<"+type+">(node->resolveName(\""+topic+"\"), 1000);")
 					else:
-						cog.outl("<TABHERE><TABHERE>pub_"+name+" = node->create_publisher<"+type+">(\"+topic+\", 10);")
+						cog.outl("<TABHERE><TABHERE>pub_"+name+" = node->create_publisher<"+type+">(\""+topic+"\", 10);")
 
 			type_map = dict()
 			for type in module['types']:
@@ -428,7 +428,6 @@ if component['usingROS'] or component['usingROS2']:
 								cog.outl("<TABHERE>void "+mname+"("+module['name']+"ROS::"+p['type']+" "+p['name']+")")
 								cog.outl("<TABHERE>{\n<TABHERE><TABHERE>pub_"+mname+".publish("+p['name']+");")
 								cog.outl("<TABHERE>}")
-			"""
 
 			import_types = []
 			recursive_import_types = []
@@ -451,6 +450,8 @@ if component['usingROS'] or component['usingROS2']:
 						cog.outl("<TABHERE><TABHERE>// convert the ICE data type into ROS message")
 						cog.outl("<TABHERE><TABHERE>pub_"+m+".publish(ros_msg);")
 						cog.outl("<TABHERE>}")
+			"""
+
 			cog.outl("};")
 
 	if component['usingROS2']:
@@ -788,11 +789,13 @@ if 'implements' in component:
 							paramStrA += delim + const + p['type'] + ' ' + ampersand + p['name']
 						cog.outl("<TABHERE>virtual " + method['return'] + ' ' + interface['name'] + "_" + method['name'] + '(' + paramStrA + ") = 0;")
 					elif impa[1] == 'ros':
-						paramStrA = module['name'] +"ROS::"+method['name']+"::Request &req, "+module['name']+"ROS::"+method['name']+"::Response &res"
-						if imp in component['iceInterfaces']:
-							cog.outl("<TABHERE>virtual bool ROS" + method['name'] + '(' + paramStrA + ") = 0;")
-						else:
-							cog.outl("<TABHERE>virtual bool " + method['name'] + '(' + paramStrA + ") = 0;")
+						if not containsMap (method, module):
+							print ("method", method['name'])
+							paramStrA = module['name'] +"ROS::"+method['name']+"::Request &req, "+module['name']+"ROS::"+method['name']+"::Response &res"
+							if imp in component['iceInterfaces']:
+								cog.outl("<TABHERE>virtual bool ROS" + method['name'] + '(' + paramStrA + ") = 0;")
+							else:
+								cog.outl("<TABHERE>virtual bool " + method['name'] + '(' + paramStrA + ") = 0;")
 sub_map = dict()
 if 'subscribesTo' in component:
 	for impa in component['subscribesTo']:
