@@ -3,6 +3,7 @@
 import sys
 import re
 import stringcase as sc
+import glob
 
 sys.path.append('/home/ksakash/archives/robocomp/python')
 
@@ -20,17 +21,83 @@ from dsl_parsers.dsl_factory import DSLFactory
 from dsl_parsers.parsing_utils import getNameNumber, communicationIsIce, IDSLPool, isAGM1Agent, \
 									  isAGM2Agent, containsMap, isTopicInterface
 
-def makePublisherROS1 ():
-    pass
+def makePublisherROS1 (component, interface, pool):
+    interface_name = interface[0]
+    module = pool.moduleProviding (interface_name)
+    module_name = module['name']
 
-def makeSubscriberROS1 ():
-    pass
+    t_map = {}
+    prf = module_name + 'ROS::'
 
-def makeServerROS1 ():
-    pass
+    for t in module['types']:
+        if t['type'] != 'dictionary' and t['type'] != 'exception':
+            t_map[t['name']] = prf + t['name']
 
-def makeClientROS1 ():
-    pass
+    for intf in module['interfaces']:
+        if intf['name'] == interface_name and isTopicInterface (intf):
+            for m in intf['methods']:
+                method = intf['methods'][m]
+                if len (method['params']) == 1:
+                    for p in method['params']:
+                        if '::' in p['type']:
+                            t_map[m] = p['type'].replace ('::', 'ROS::')
+                        else:
+                            t_map[m] = prf + p['type']
+                        break
+
+    cog.outl ("class Publisher" + interface_name + " {\n")
+    cog.outl ("public:\n")
+
+    # publishers
+    pub_declration = "\tros::Publisher pub_{};"
+    for key in t_map:
+        name = key
+        type = t_map[name]
+        cog.outl (pub_declration.format (name))
+
+    # ros2 node
+    cog.outl ("\n\tstd::shared_ptr<ros::NodeHandle> node;\n")
+
+    cog.outl ("\tPublisher" + interface_name + " () {\n")
+
+    # publisher initialization
+    pub_definition = "\t\tpub_{} = node->advertise<{}>(\"{}\", 10);"
+    for key in t_map:
+        name = key
+        type = t_map[name]
+        cog.outl (pub_definition.format (name, type, name))
+
+    cog.outl ("\n\t}\n")
+    cog.outl ("\t~Publisher" + interface_name + " () {}\n")
+
+    cog.outl ("};\n")
+
+def makeSubscriberROS1 (component, interface, pool):
+    interface_name = interface[0]
+    module = pool.moduleProviding (interface_name)
+    module_name = module['name']
+
+    t_map = {}
+    component_name = component['name']
+    prf = component_name + '::msg::'
+
+def makeServerROS1 (component, interface, pool):
+    interface_name = interface[0]
+    module = pool.moduleProviding (interface_name)
+    module_name = module['name']
+
+    t_map = {}
+    component_name = component['name']
+    prf = component_name + '::srv::'
+
+def makeClientROS1 (component, interface, pool):
+    interface_name = interface[0]
+    module = pool.moduleProviding (interface_name)
+    module_name = module['name']
+
+    t_map = {}
+    component_name = component['name']
+    prf = component_name + '::srv::'
 
 def makePublisherROS2 (component, interface, pool):
     interface_name = interface[0]
@@ -41,7 +108,6 @@ def makePublisherROS2 (component, interface, pool):
     component_name = sc.snakecase (component['name'])
     prf = component_name + '::msg::'
 
-    #print ("module:", module)
     for t in module['types']:
         if t['type'] != 'dictionary' and t['type'] != 'exception':
             t_map[t['name']] = prf + sc.pascalcase (t['name'])
@@ -292,15 +358,31 @@ for imp in component['recursiveImports'] + component["iceInterfaces"]:
 for name in usingList:
 	cog.outl('#include <'+name+'.h>')
 
-def getROSMsgList ():
-    pass
+def getROSList ():
+    mypath = outputPath + '/src'
+    myfiles = []
+    for f in listdir (mypath):
+        if not isfile (join (mypath, f)):
+            dir = f
+            newpath = join (mypath, f)
+            files = [(dir + '/' + x.split('/')[-1]) for x in glob.glob (join (newpath, "*.h"))]
+            myfiles += files
 
-def getROSSrvList ():
-    pass
+    return myfiles
 
 # ICE and ROS headers
 if component['usingROS']:
-    pass
+
+    cog.outl ("#include <ros/ros.h>")
+    cog.outl ("#include <std_msgs/String.h>")
+    cog.outl ("#include <std_msgs/Float32.h>")
+    cog.outl ("#include <std_msgs/Int32.h>")
+    cog.outl ("#include <std_msgs/Bool.h>")
+
+    rosList = getROSList ()
+
+    for f in rosList:
+        cog.outl ("#include <" + f + ">")
 
 def getROS2MsgList ():
     mypath = outputPath + '/msg'
@@ -636,19 +718,19 @@ except:
 	pass
 
 for interface in component['implements']:
-    if not communicationIsIce (interface) and interface[1] == 'ros2':
+    if not communicationIsIce (interface):
         cog.outl("<TABHERE>Server"+interface[0]+"* "+interface[0].lower()+"_proxy;")
 
 for interface in component['requires']:
-    if not communicationIsIce (interface) and interface[1] == 'ros2':
+    if not communicationIsIce (interface):
         cog.outl("<TABHERE>Client"+interface[0]+"* "+interface[0].lower()+"_proxy;")
 
 for interface in component['publishes']:
-    if not communicationIsIce (interface) and interface[1] == 'ros2':
+    if not communicationIsIce (interface):
         cog.outl("<TABHERE>Publisher"+interface[0]+"* "+interface[0].lower()+"_proxy;")
 
 for interface in component['subscribesTo']:
-    if not communicationIsIce (interface) and interface[1] == 'ros2':
+    if not communicationIsIce (interface):
         cog.outl("<TABHERE>Subscriber"+interface[0]+"* "+interface[0].lower()+"_proxy;")
 
 ]]]

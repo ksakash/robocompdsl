@@ -27,14 +27,6 @@ if component is None:
 pool = IDSLPool(theIDSLs, includeDirectories)
 ]]]
 [[[end]]]
-
-[[[cog
-A()
-import datetime
-cog.out(str(datetime.date.today().year))
-Z()
-]]]
-[[[end]]]
 #include "genericworker.h"
 
 [[[cog
@@ -54,7 +46,6 @@ else:
 ]]]
 [[[end]]]
 {
-
 [[[cog
 if sm is not None:
     codaddTransition = ""
@@ -205,25 +196,24 @@ for name, num in getNameNumber(component['publishes']):
 	cont = cont + 1
 ]]]
 [[[end]]]
-
 	mutex = new QMutex(QMutex::Recursive);
 
 [[[cog
 for interface in component['publishes']:
     if not communicationIsIce (interface):
-        cog.outl (\tinterface[0].lower() + "_proxy = new Publisher" + interface[0] + " ();")
+        cog.outl("<TABHERE>" + interface[0].lower() + "_proxy = new Publisher" + interface[0] + " ();")
 
 for interface in component['subscribesTo']:
     if not communicationIsIce (interface):
-        cog.outl (\tinterface[0].lower() + "_proxy = new Publisher" + interface[0] + " ();")
+        cog.outl ("<TABHERE>" + interface[0].lower() + "_proxy = new Subscriber" + interface[0] + " ();")
 
 for interface in component['requires']:
     if not communicationIsIce (interface):
-        cog.outl (\tinterface[0].lower() + "_proxy = new Publisher" + interface[0] + " ();")
+        cog.outl ("<TABHERE>" + interface[0].lower() + "_proxy = new Client" + interface[0] + " ();")
 
 for interface in component['implements']:
     if not communicationIsIce (interface):
-        cog.outl (\tinterface[0].lower() + "_proxy = new Publisher" + interface[0] + " ();")
+        cog.outl ("<TABHERE>" + interface[0].lower() + "_proxy = new Server" + interface[0] + " ();")
 
 if component['gui'] is not None:
 	cog.outl("""<TABHERE>#ifdef USE_QTGUI
@@ -241,22 +231,17 @@ if component['statemachine'] is None:
 
 }
 
-/**
-* \brief Default destructor
-*/
 GenericWorker::~GenericWorker()
 {
 
 }
+
 void GenericWorker::killYourSelf()
 {
 	rDebug("Killing myself");
 	emit kill();
 }
-/**
-* \brief Change compute period
-* @param per Period in ms
-*/
+
 void GenericWorker::setPeriod(int p)
 {
 	rDebug("Period changed"+QString::number(p));
