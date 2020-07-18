@@ -297,7 +297,8 @@ if component['usingROS'] or component['usingROS2']:
 
 		if component['usingROS2']:
 			for interface in module['interfaces']:
-				cog.outl("<TABHERE>"+interface['name'].lower()+"_proxy = new Subscriber"+interface['name']+"();")
+				if interface['name'] == imp[0]:
+					cog.outl("<TABHERE>"+interface['name'].lower()+"_proxy = new Subscriber"+interface['name']+"();")
 
 	#INICIALIZANDO IMPLEMENTS
 	for imp in component['implements']:
