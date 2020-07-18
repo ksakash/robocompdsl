@@ -91,7 +91,7 @@ def makeSubscriberROS2 (component, interface, pool):
 
     for t in module['types']:
         if t['type'] != 'dictionary' and t['type'] != 'exception':
-            t_map[t['name']] = prf + sc.pascalcase (t['type'])
+            t_map[t['name']] = prf + sc.pascalcase (t['name'])
 
     for intf in module['interfaces']:
         if intf['name'] == interface_name and isTopicInterface (intf):
@@ -117,11 +117,11 @@ def makeSubscriberROS2 (component, interface, pool):
     cog.outl ("\t\tnode = rclcpp::Node::make_shared (\"my_subscriber\");\n")
 
     # subscriber initialization
-    sub_definition = "\t\tsub_{} = node->create_subscription<{}>(\"{}\", 10);"
+    sub_definition = "\t\tsub_{} = node->create_subscription<{}>(\"{}\", 10, std::bind(&Subscriber{}::cb_{}, this, _1));"
     for key in t_map:
         name = key
         type = t_map[name]
-        cog.outl (sub_definition.format (name, type, name))
+        cog.outl (sub_definition.format (name, type, name, interface_name, name))
 
     cog.outl ("\n\t}\n")
     cog.outl ("\t~Subscriber" + interface_name + " () {}\n")
@@ -148,12 +148,13 @@ def makeServerROS2 (component, interface, pool):
     for intf in module['interfaces']:
         if intf['name'] == interface_name and not isTopicInterface (intf):
             for m in intf['methods']:
-                t_map[m] = prf + sc.pascalcase (m)
+                if not containsMap (intf['methods'][m], module):
+                    t_map[m] = prf + sc.pascalcase (m)
 
     cog.outl ("class Server" + interface_name + " {\n")
     cog.outl ("public:\n")
     # servers declaration
-    srv_declaration = "\trclcpp::Server<{}> server_{};"
+    srv_declaration = "\trclcpp::Service<{}>::SharedPtr server_{};"
     for key in t_map:
         name = key
         data_type = t_map[name]
@@ -164,11 +165,11 @@ def makeServerROS2 (component, interface, pool):
 
     cog.outl ("\tServer" + interface_name + " () {\n")
     # ros2 node initialization
-    cog.outl ("\t\tnode = rclcpp::Node::make_shared (\"my_server\")\n")
+    cog.outl ("\t\tnode = rclcpp::Node::make_shared (\"my_server\");\n")
 
     # server initialization
     server_definition = \
-        "\t\tserver_{} = rclcpp->create_service<{}>(\"{}\", std::bind(&Server{}::{}, this, _1, _2));"
+        "\t\tserver_{} = node->create_service<{}>(\"{}\", std::bind(&Server{}::{}, this, _1, _2));"
     for key in t_map:
         name = key
         data_type = t_map[name]
@@ -178,7 +179,7 @@ def makeServerROS2 (component, interface, pool):
     cog.outl ("\t~Server" + interface_name + " () {}\n")
     cog.outl ("private:\n")
     # server callback
-    server_cb = "\tvoid {} (const std::shared_ptr<{}::Response> res, std::shared_ptr<{}::Request> req)"
+    server_cb = "\tvoid {} (const std::shared_ptr<{}::Request> req, std::shared_ptr<{}::Response> res)"
     for key in t_map:
         name = key
         data_type = t_map[name]
@@ -198,12 +199,13 @@ def makeClientROS2 (component, interface, pool):
     for intf in module['interfaces']:
         if intf['name'] == interface_name and not isTopicInterface (intf):
             for m in intf['methods']:
-                t_map[m] = prf + sc.pascalcase (m)
+                if not containsMap (intf['methods'][m], module):
+                    t_map[m] = prf + sc.pascalcase (m)
 
     cog.outl ("class Client" + interface_name + " {\n")
     cog.outl ("public:\n")
     # servers declaration
-    client_declaration = "\trclcpp::Client<{}> client_{};"
+    client_declaration = "\trclcpp::Client<{}>::SharedPtr client_{};"
     for key in t_map:
         name = key
         data_type = t_map[name]
@@ -214,10 +216,10 @@ def makeClientROS2 (component, interface, pool):
 
     cog.outl ("\tClient" + interface_name + " () {\n")
     # ros2 node initialization
-    cog.outl ("\t\tnode = rclcpp::Node::make_shared (\"my_client\")\n")
+    cog.outl ("\t\tnode = rclcpp::Node::make_shared (\"my_client\");\n")
 
     # client initialization
-    client_definition = "\t\tclient_{} = rclcpp->create_client<{}>(\"{}\");"
+    client_definition = "\t\tclient_{} = node->create_client<{}>(\"{}\");"
     for key in t_map:
         name = key
         data_type = t_map[name]
