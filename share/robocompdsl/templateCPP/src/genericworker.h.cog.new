@@ -48,7 +48,12 @@ def makePublisherROS2 (component, interface, pool):
 
     for intf in module['interfaces']:
         if intf['name'] == interface_name and isTopicInterface (intf):
-            pass
+            for m in intf['methods']:
+                method = intf['methods'][m]
+                if len (method['params']) == 1:
+                    for p in method['params']:
+                        t_map[m] = prf + sc.pascalcase (p['type'].split('::')[-1])
+                        break
 
     cog.outl ("class Publisher" + interface_name + " {\n")
     cog.outl ("public:\n")
@@ -95,7 +100,12 @@ def makeSubscriberROS2 (component, interface, pool):
 
     for intf in module['interfaces']:
         if intf['name'] == interface_name and isTopicInterface (intf):
-            pass
+            for m in intf['methods']:
+                method = intf['methods'][m]
+                if len (method['params']) == 1:
+                    for p in method['params']:
+                        t_map[m] = prf + sc.pascalcase (p['type'].split('::')[-1])
+                        break
 
     cog.outl ("class Subscriber" + interface_name + " {\n")
     cog.outl ("public:\n")
