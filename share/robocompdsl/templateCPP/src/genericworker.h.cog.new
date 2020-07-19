@@ -185,8 +185,41 @@ def makeClientROS1 (component, interface, pool):
     module_name = module['name']
 
     t_map = {}
-    component_name = component['name']
-    prf = component_name + '::srv::'
+    prf = module_name + 'ROS::'
+
+    for intf in module['interfaces']:
+        if intf['name'] == interface_name and not isTopicInterface (intf):
+            for m in intf['methods']:
+                method = intf['methods'][m]
+                if not containsMap (method, module):
+                    t_map[m] = prf + m
+
+    cog.outl ("class Client" + interface_name + " {\n")
+    cog.outl ("public:\n")
+
+    # clients
+    client_declaration = "\tros::ServiceClient client_{};"
+    for key in t_map:
+        name = key
+        type = t_map[name]
+        cog.outl (client_declaration.format (name))
+
+    # ros2 node
+    cog.outl ("\n\tstd::shared_ptr<ros::NodeHandle> node;\n")
+
+    cog.outl ("\tClient" + interface_name + " () {\n")
+
+    # client initialization
+    client_definition = "\t\tclient_{} = node->serviceClient<{}>(\"{}\");"
+    for key in t_map:
+        name = key
+        type = t_map[name]
+        cog.outl (client_definition.format (name, type, name))
+
+    cog.outl ("\n\t}\n")
+    cog.outl ("\t~Client" + interface_name + " () {}\n")
+
+    cog.outl ("};\n")
 
 def makePublisherROS2 (component, interface, pool):
     interface_name = interface[0]
