@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-
 # TODO
-#
 # Read ports from component-ports.txt for the files in etc.
-#
-#
+
 import argparse
 import filecmp
 import sys, os, subprocess
@@ -13,7 +10,6 @@ from distutils import spawn
 import stringcase as sc
 
 from cogapp import Cog
-# from parseCDSL import *
 sys.path.append("/home/ksakash/archives/robocomp/python")
 from dsl_parsers.dsl_factory import DSLFactory
 from dsl_parsers.parsing_utils import communicationIsIce, IDSLPool
@@ -23,14 +19,6 @@ import rcExceptions
 import sys
 
 DIFF_TOOLS = ["meld", "kdiff3", "diff"]
-
-
-def camel_to_snake(name):
-  name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-  return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
-
-def snake_to_camel(word):
-    return ''.join(x.capitalize() or '_' for x in word.split('_'))
 
 def isSrv(method):
     returnTypeVoid = (method['return'] != 'void')
@@ -42,7 +30,6 @@ def isSrv(method):
 
 def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
     """
-
     :param idslFile: is the IDSL file imported in the CDSL, outputPath is the path where the ROS headers are to be generated
     :param outputPath:
     :param comp:
@@ -75,6 +62,7 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
                     replaceTagsInFile(ofile)
                     commandCPP = "/opt/ros/melodic/lib/gencpp/gen_cpp.py " + ofile + " -Istd_msgs:/opt/ros/melodic/share/std_msgs/msg -I" + idsl['name'] + "ROS:" + outputPath
                     commandPY  = "/opt/ros/melodic/lib/genpy/genmsg_py.py " + ofile + " -Istd_msgs:/opt/ros/melodic/share/std_msgs/msg -I" + idsl['name'] + "ROS:" + outputPath
+                    print ("imports:", imported)
                     for impo in imported:
                         if not impo == idsl['name']+"ROS":
                             commandCPP = commandCPP + " -I" + impo + ":" + outputPath
@@ -161,8 +149,8 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
         pass
 
     generarH(idslFile, imported)
-    # os.system("rm "+outputPath+"/*.msg")
-    # os.system("rm "+outputPath+"/*.srv")
+    os.system("rm "+outputPath+"/*.msg")
+    os.system("rm "+outputPath+"/*.srv")
 
 def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
     imported = []
@@ -173,14 +161,14 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
 
     def generarH(idslFile, imported):
         idsl = DSLFactory().from_file(idslFile)
-        for imp in idsl['types']:
-            if imp['type'] in ['struct','sequence']:
+        for t in idsl['types']:
+            if t['type'] in ['struct','sequence']:
                 for f in [ "servant.msg"]:
-                    ofile = outputPath+"/msg/"+sc.pascalcase(imp['name']) + ".msg"
+                    ofile = outputPath+"/msg/"+sc.pascalcase(t['name']) + ".msg"
                     print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                     # Call cog
                     rostype = 'ros2'
-                    run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + " -D structName=" + imp['name'] +" -D theIDSL="+idslFile+ " -D rostype="+rostype+" -o " + ofile + " " + "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
+                    run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + " -D structName=" + t['name'] +" -D theIDSL="+idslFile+ " -D rostype="+rostype+" -o " + ofile + " " + "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
                     run = run.split(' ')
                     ret = Cog().main(run)
                     if ret != 0:
@@ -188,38 +176,37 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                         sys.exit(-1)
                     replaceTagsInFile(ofile)
         for ima in comp['implements']+comp['requires']:
-            im = ima
-            if type(im) != type(''):
-                im = im[0]
+            interface_name = ima[0]
             if not communicationIsIce(ima):
                 for interface in idsl['interfaces']:
-                    if isTopicInterface (interface):
-                        continue
-                    for method in interface['methods']:
-                        if containsMap (interface['methods'][method], idsl):
+                    if interface_name == interface['name']:
+                        if isTopicInterface (interface):
                             continue
-                        if 'params' in interface['methods'][method]:
-                            if isSrv (interface['methods'][method]) or True:
-                                for f in [ "servant.srv"]:
-                                    ofile = outputPath+"/srv/"+sc.pascalcase(interface['methods'][method]['name']) + ".srv"
-                                    print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
-                                    # Call cog
-                                    rostype = 'ros2'
-                                    run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + " -D methodName=" + interface['methods'][method]['name'] +" -D theIDSL="+idslFile+" -D rostype="+rostype+" -o " + ofile + " " + "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
-                                    run = run.split(' ')
-                                    ret = Cog().main(run)
-                                    if ret != 0:
-                                        print('ERROR')
-                                        sys.exit(-1)
-                                    replaceTagsInFile(ofile)
+                        for method in interface['methods']:
+                            if containsMap (interface['methods'][method], idsl):
+                                continue
+                            if 'params' in interface['methods'][method]:
+                                if isSrv (interface['methods'][method]) or True:
+                                    for f in [ "servant.srv"]:
+                                        ofile = outputPath+"/srv/"+sc.pascalcase(interface['methods'][method]['name']) + ".srv"
+                                        print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
+                                        # Call cog
+                                        rostype = 'ros2'
+                                        run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + " -D methodName=" + interface['methods'][method]['name'] +" -D theIDSL="+idslFile+" -D rostype="+rostype+" -o " + ofile + " " + "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
+                                        run = run.split(' ')
+                                        ret = Cog().main(run)
+                                        if ret != 0:
+                                            print('ERROR')
+                                            sys.exit(-1)
+                                        replaceTagsInFile(ofile)
+                                else:
+                                    print("error: ROS service with incorrect number of parameters. ROS only supports remote procedure calls of the form: void method(type inVar, out type outVar);")
+                                    for param in enumerate(interface['methods'][method]['params']):
+                                        print(param[0], '-->', param[1])
+                                    sys.exit(-1)
                             else:
-                                print("error: ROS service with incorrect number of parameters. ROS only supports remote procedure calls of the form: void method(type inVar, out type outVar);")
-                                for param in enumerate(interface['methods'][method]['params']):
-                                    print(param[0], '-->', param[1])
+                                print("error: service without params. Form is: void method(type inVar, out type outVar);")
                                 sys.exit(-1)
-                        else:
-                            print("error: service without params. Form is: void method(type inVar, out type outVar);")
-                            sys.exit(-1)
         return idsl['name']+"ROS"
     try:
         idsl_imports = idsl['imports'].split ('#')
@@ -235,9 +222,7 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
 
     generarH(idslFile, imported)
 
-#
 # Misc functions
-#
 def replaceTagsInFile(path):
     i = open(path, 'r')
     text = i.read()
@@ -272,22 +257,21 @@ Component <CHANGETHECOMPONENTNAME>
         subscribesTo topicToSubscribeTo;
         publishes topicToPublish;
     };
-	language Cpp//Cpp11//python;
-	gui Qt(QWidget//QDialog//QMainWindow);
-	//options agmagent, InnerModelViewer;
-	statemachine "statemachine.smdsl";
+    language Cpp//Cpp11//python;
+    gui Qt(QWidget//QDialog//QMainWindow);
+    //options agmagent, InnerModelViewer;
+    statemachine "statemachine.smdsl";
 };\n\n"""
         name = path.split('/')[-1].split('.')[0]
         string = string.replace('<CHANGETHECOMPONENTNAME>', name)
         open(path, "w").write(string)
 
-
 def generateDummySMDSL(path):
-	if os.path.exists(path):
-		print("File", path, "already exists.\nExiting...")
-	else:
-		print("Generating dummy SMDSL file:", path)
-		state_machine_string = """
+    if os.path.exists(path):
+        print("File", path, "already exists.\nExiting...")
+    else:
+        print("Generating dummy SMDSL file:", path)
+        state_machine_string = """
 /* CHANGE THE NAME OF THE MACHINE IF YOU MAKE
    ANY CHANGE TO THE DEFAULT STATES OR TRANSITIONS */
 
@@ -328,7 +312,7 @@ name_machine{
 
 ------------------------------------------------------------------ */\n"""
 
-		open(path, "w").write(state_machine_string)
+        open(path, "w").write(state_machine_string)
 
 def get_diff_tool(prefered=None):
     if prefered in DIFF_TOOLS:
@@ -358,7 +342,7 @@ def create_directory(directory):
             print('\nCOULDN\'T CREATE', directory)
             sys.exit(-1)
 
-#Class deffining colors for terminal printing
+# Class deffining colors for terminal printing
 class BColors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -369,14 +353,14 @@ class BColors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-#Class to print(colored error message on argparse
+# Class to print(colored error message on argparse
 class MyParser(argparse.ArgumentParser):
     def error(self, message):
         sys.stderr.write((BColors.FAIL + 'error: %s\n' + BColors.ENDC) % message)
         self.print_help()
         sys.exit(2)
 
-#Class to expand and check list of paths arguments in argparse
+# Class to expand and check list of paths arguments in argparse
 class FullPaths(argparse.Action):
     """Expand user- and relative-paths"""
     def __call__(self, parser, namespace, values, option_string=None):
@@ -391,7 +375,6 @@ class FullPaths(argparse.Action):
 
         else:
             setattr(namespace, self.dest, dirnames)
-
 
 def main():
     parser = MyParser(description='This application create components files from cdsl files or .ice from idsl\n'
@@ -440,13 +423,18 @@ def main():
                 raise rcExceptions.InterfaceNotFound(interface_required, pool.interfaces())
 
         if component['usingROS2']:
+            create_directory(outputPath + "/msg")
+            create_directory(outputPath + "/srv")
+
             for imp in component['imports']:
                 generateROS2Headers(imp, outputPath, component, args.include_dirs)
 
+        if component['usingROS']:
+            for imp in component['imports']:
+                generateROSHeaders(imp, outputPath+"/src", component, args.include_dirs)
+
         if component['language'].lower() == 'cpp' or component['language'].lower() == 'cpp11':
-            #
             # Check output directory
-            #
             if not os.path.exists(outputPath):
                 create_directory(outputPath)
             # Create directories within the output directory
@@ -458,17 +446,15 @@ def main():
                 print('There was a problem creating a directory')
                 sys.exit(1)
                 pass
-            #
             # Generate regular files
-            #
             files = ['CMakeLists.txt', 'DoxyFile', 'README-STORM.txt', 'README.md', 'etc/config', \
                      'src/main.cpp.cog', 'src/CMakeLists.txt', 'src/CMakeListsSpecific.txt', \
                      'src/commonbehaviorI.h', 'src/commonbehaviorI.cpp', 'src/genericmonitor.h', \
                      'src/genericmonitor.cpp', 'src/config.h', 'src/specificmonitor.h', \
-                     'src/specificmonitor.cpp', 'src/genericworker.h.cog', \
-                     'src/genericworker.cpp.cog', 'src/specificworker.h.cog', \
-                     'src/specificworker.cpp.cog', 'src/mainUI.ui', 'package.xml']
-            specificFiles = ['src/specificworker.h.cog', 'src/specificworker.cpp.cog', \
+                     'src/specificmonitor.cpp', 'src/genericworker.h.cog.new', \
+                     'src/genericworker.cpp.cog.new', 'src/specificworker.h.cog.new', \
+                     'src/specificworker.cpp.cog.new', 'src/mainUI.ui', 'package.xml']
+            specificFiles = ['src/specificworker.h.cog.new', 'src/specificworker.cpp.cog.new', \
                              'src/CMakeListsSpecific.txt', 'src/mainUI.ui', 'src/specificmonitor.h', \
                              'src/specificmonitor.cpp', 'README.md', 'etc/config']
             for f in files:
@@ -493,9 +479,7 @@ def main():
                         print('ERROR')
                         sys.exit(-1)
                     replaceTagsInFile(ofile)
-            #
             # Generate interface-dependent files
-            #
             for ima in component['implements']:
                 im = ima
                 if type(im) != type(''):
@@ -526,7 +510,6 @@ def main():
                         if type(theInterfaceStr) == type([]):
                             theInterfaceStr = str(';'.join(im))
                         run = "cog.py -z -d -D theCDSL="+inputFile  + " -D theIDSLs="+imports  + ' -D theIDSLPaths='+ '#'.join(args.include_dirs) + " -D theInterface="+theInterfaceStr + " -o " + ofile + " " + "/home/ksakash/archives/robocomp/share/robocompdsl/templateCPP/" + f
-                        #print(run
                         run = run.split(' ')
                         ret = Cog().main(run)
                         if ret != 0:
@@ -534,9 +517,7 @@ def main():
                             sys.exit(-1)
                         replaceTagsInFile(ofile)
         elif component['language'].lower() == 'python':
-            #
             # Check output directory
-            #
             if not os.path.exists(outputPath):
                 create_directory(outputPath)
             # Create directories within the output directory
@@ -555,9 +536,7 @@ def main():
             for sub in component['subscribesTo']:
                 if communicationIsIce(sub):
                     needStorm = True
-            #
             # Generate regular files
-            #
             files = [ 'CMakeLists.txt', 'DoxyFile', 'README-STORM.txt', 'README.md', 'etc/config', 'src/main.py', 'src/genericworker.py', 'src/specificworker.py', 'src/mainUI.ui']
             specificFiles = [ 'src/specificworker.py', 'src/mainUI.ui', 'README.md', 'etc/config']
             for f in files:
@@ -588,9 +567,7 @@ def main():
                         sys.exit(-1)
                     replaceTagsInFile(ofile)
                     if f == 'src/main.py': os.chmod(ofile, os.stat(ofile).st_mode | 0o111)
-            #
             # Generate interface-dependent files
-            #
             for imp in component['implements']+component['subscribesTo']:
                 if type(imp) != type(''):
                     im = imp[0]
@@ -610,10 +587,6 @@ def main():
                         replaceTagsInFile(ofile)
         else:
             print('Unsupported language', component['language'])
-
-        if component['usingROS']:
-            for imp in component['imports']:
-                generateROSHeaders(imp, outputPath+"/src", component, args.include_dirs)
 
         # Code to launch diff tool on .new files to be compared with their old version
         if args.diff is not None:

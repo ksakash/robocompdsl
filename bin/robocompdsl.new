@@ -48,7 +48,7 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
 
         for t in idsl['types']:
             if t['type'] in ['struct','sequence']:
-                f = "SERVANT.MSG"
+                f = "servant.msg"
                 ofile = outputPath+"/"+t['name'] + "." + f.split('.')[-1].lower()
                 print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                 # Call cog
@@ -70,7 +70,7 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
                                 " -Istd_msgs:/opt/ros/melodic/share/std_msgs/msg -I" + \
                                 idsl['name'] + "ROS:" + outputPath
                 for _import in imported:
-                    if not _import == idsl['name']+"ROS":
+                    if not (_import == (idsl['name'] + "ROS")):
                         commandCPP = commandCPP + " -I" + _import + ":" + outputPath
                         commandPY  = commandPY + " -I" + _import + ":" + outputPath
                 if not os.path.exists(outputPath):
@@ -88,7 +88,7 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
                     fileInit.write("from ._" + t['name'] + " import *\n")
                     fileInit.close()
                 except:
-                    print ("something bad happened")
+                    print ("something bad happened 1")
 
         for implement_require in comp['implements'] + comp['requires']:
             interface_name = implement_require[0]
@@ -102,7 +102,7 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
                 for method in interface['methods']:
                     if containsMap (interface['methods'][method], idsl):
                         continue
-                    f = "SERVANT.SRV"
+                    f = "servant.srv"
                     ofile = outputPath+"/"+interface['methods'][method]['name'] + \
                             "." + f.split('.')[-1].lower()
                     print('Generating', ofile, ' (servant for', \
@@ -148,8 +148,9 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
                         fileInit.write("from ._"+interface['methods'][method]['name']+" import *\n")
                         fileInit.close()
                     except:
-                        print ("something bad happened")
-
+                        print ("something bad happened 2")
+        os.system("touch "+outputPath + "/" + idsl['name'] + "ROS/__init__.py")
+        return idsl['name']+"ROS"
     try:
         idsl_imports = idsl['imports'].split ('#')
         idsl_recursive_imports = idsl['recursive_imports'].split ('#')
@@ -160,7 +161,7 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
         for importIDSL in imps:
             imported.append(generarH("/opt/robocomp/interfaces/IDSLs/"+importIDSL, []))
     except:
-        print ("something bad happened")
+        print ("something bad happened 3")
 
     generarH(idslFile, imported)
     os.system("rm "+outputPath+"/*.msg")
@@ -417,7 +418,7 @@ def main():
     inputFile = args.input_file
     outputPath = args.output_path
 
-    sys.path.append('/opt/robocomp/python')
+    sys.path.append('/home/ksakash/archives/robocomp/python')
 
     new_existing_files = {}
 
