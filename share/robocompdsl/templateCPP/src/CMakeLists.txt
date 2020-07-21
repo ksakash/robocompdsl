@@ -1,16 +1,10 @@
 [[[cog
 import sys
-sys.path.append('/home/ksakash/archives/robocomp/python')
+sys.path.append('../../../../python')
 
 import cog
 
 includeDirectories = theIDSLPaths.split('#')
-
-
-
-
-
-
 
 def A():
 	cog.out('<@@<')

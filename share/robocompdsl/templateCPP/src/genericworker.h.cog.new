@@ -5,7 +5,7 @@ import re
 import stringcase as sc
 import glob
 
-sys.path.append('/home/ksakash/archives/robocomp/python')
+sys.path.append('../../../../python')
 
 import cog
 def A():

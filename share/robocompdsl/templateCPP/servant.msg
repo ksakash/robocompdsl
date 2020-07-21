@@ -1,7 +1,7 @@
 [[[cog
 
 import sys
-sys.path.append('/home/ksakash/archives/robocomp/python')
+sys.path.append('../../../python')
 
 import stringcase as sc
 import cog

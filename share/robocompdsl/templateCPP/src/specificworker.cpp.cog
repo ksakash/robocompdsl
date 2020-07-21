@@ -2,7 +2,7 @@
 [[[cog
 
 import sys
-sys.path.append('/opt/robocomp/python')
+sys.path.append('../python')
 
 import cog
 def A():
