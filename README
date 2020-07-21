@@ -2,3 +2,19 @@
 
 robocompdsl tool with ros2 support
 
+# INSTALLATION
+
+- clone the repo
+$ git clone https://github.com/ksakash/robocompdsl
+
+- create an alias to use the script from this repo instead of the one installed by robocomp
+$ vim ~/.bashrc
+$ alias temprobocompdsl=/path/to/your/bin/robocompdsl
+
+# USAGE
+
+- the working of temprobocompdsl is same as robocompdsl
+
+- ex: to create a component
+$ temprobocompdsl component.cdsl .
+
