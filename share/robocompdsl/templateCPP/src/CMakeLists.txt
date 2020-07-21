@@ -1,6 +1,11 @@
 [[[cog
 import sys
-sys.path.append('../../../../python')
+import os
+
+dirname = os.path.dirname(sys.argv[0])
+filename = os.path.join(dirname, '../../../../python')
+
+sys.path.append(filename)
 
 import cog
 

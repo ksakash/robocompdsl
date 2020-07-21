@@ -10,7 +10,11 @@ from distutils import spawn
 import stringcase as sc
 
 from cogapp import Cog
-sys.path.append("../python")
+
+dirname = os.path.dirname(sys.argv[0])
+filename = os.path.join(dirname, '../python')
+sys.path.append(filename)
+
 from dsl_parsers.dsl_factory import DSLFactory
 from dsl_parsers.parsing_utils import communicationIsIce, IDSLPool
 from dsl_parsers.parsing_utils import gimmeIDSL, isTopicInterface, containsMap
@@ -403,7 +407,7 @@ def main():
     inputFile = args.input_file
     outputPath = args.output_path
 
-    sys.path.append('../python')
+    sys.path.append(filename)
 
     new_existing_files = {}
 

@@ -10,7 +10,12 @@ from distutils import spawn
 import stringcase as sc
 
 from cogapp import Cog
-sys.path.append("../python")
+
+dirname = os.path.dirname(sys.argv[0])
+templatedir = os.path.join(dirname, "../share/robocompdsl/templateCPP") + '/'
+filename = os.path.join(dirname, '../python')
+sys.path.append(filename)
+
 from dsl_parsers.dsl_factory import DSLFactory
 from dsl_parsers.parsing_utils import communicationIsIce, IDSLPool
 from dsl_parsers.parsing_utils import gimmeIDSL, isTopicInterface, containsMap
@@ -53,10 +58,10 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
                 print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                 # Call cog
                 rostype = 'ros'
+                # templatedir = os.path.join(dirname, "../share/robocompdsl/templateCPP") + '/'
                 run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + \
                         " -D structName=" + t['name'] +" -D theIDSL="+idslFile+ " -D rostype=" + \
-                        rostype+" -o " + ofile + " " + \
-                        "../share/robocompdsl/templateCPP/" + f
+                        rostype+" -o " + ofile + " " + templatedir + f
                 run = run.split(' ')
                 ret = Cog().main(run)
                 if ret != 0:
@@ -113,7 +118,7 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
                             '#'.join(includeDirectories) + " -D methodName=" + \
                             interface['methods'][method]['name'] + " -D theIDSL=" + \
                             idslFile + " -D rostype="+rostype+" -o " + ofile + " " + \
-                            "../share/robocompdsl/templateCPP/" + f
+                            templatedir + f
                     run = run.split(' ')
                     ret = Cog().main(run)
                     if ret != 0:
@@ -183,10 +188,10 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                 print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                 # Call cog
                 rostype = 'ros2'
+                # templatedir = os.path.join(dirname, "../share/robocompdsl/templateCPP") + '/'
                 run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + \
                       " -D structName=" + t['name'] + " -D theIDSL=" + idslFile + " -D rostype=" + \
-                      rostype + " -o " + ofile + " " + \
-                      "../share/robocompdsl/templateCPP/" + f
+                      rostype + " -o " + ofile + " " + templatedir + f
                 run = run.split(' ')
                 ret = Cog().main(run)
                 if ret != 0:
@@ -211,10 +216,11 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                     print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                     # Call cog
                     rostype = 'ros2'
+                    # templatedir = os.path.join(dirname, "../share/robocompdsl/templateCPP") + '/'
                     run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + \
                           " -D methodName=" + interface['methods'][method]['name'] + " -D theIDSL=" \
                           + idslFile+" -D rostype="+rostype+" -o " + ofile + " " + \
-                          "../share/robocompdsl/templateCPP/" + f
+                          templatedir + f
                     run = run.split(' ')
                     ret = Cog().main(run)
                     if ret != 0:
@@ -418,7 +424,7 @@ def main():
     inputFile = args.input_file
     outputPath = args.output_path
 
-    sys.path.append('../python')
+    sys.path.append(filename)
 
     new_existing_files = {}
 
@@ -478,7 +484,8 @@ def main():
             for f in files:
                 if (f == 'package.xml') and component['usingROS2']:
                     ofile = outputPath + '/' + f
-                    ifile = "../share/robocompdsl/templateCPP/" + f
+                    # ifile = "../share/robocompdsl/templateCPP/" + f
+                    ifile = templatedir + f
                     os.system("cp " + ifile + " " + ofile)
                     continue
 
@@ -489,7 +496,8 @@ def main():
                     new_existing_files[os.path.abspath(ofile)] = os.path.abspath(ofile)+'.new'
                     ofile += '.new'
 
-                ifile = "../share/robocompdsl/templateCPP/" + f
+                # ifile = "../share/robocompdsl/templateCPP/" + f
+                ifile = templatedir + f
 
                 if f != 'src/mainUI.ui' or component['gui'] is not None:
                     print('Generating', ofile)
@@ -515,7 +523,7 @@ def main():
                         run = "cog.py -z -d -D theCDSL=" + inputFile + " -D theIDSLs=" + imports + \
                               ' -D theIDSLPaths=' + '#'.join(args.include_dirs) + \
                               " -D theInterface=" + interface_name + " -o " + ofile + " " + \
-                              "../share/robocompdsl/templateCPP/" + f
+                              templatedir + f
                         run = run.split(' ')
                         ret = Cog().main(run)
                         if ret != 0:
@@ -537,8 +545,7 @@ def main():
                         run = "cog.py -z -d -D theCDSL=" + inputFile + " -D theIDSLs=" + imports + \
                               ' -D theIDSLPaths=' + '#'.join(args.include_dirs) + \
                               " -D theInterface=" + theInterfaceStr + " -o " + ofile + \
-                              " " + "../share/robocompdsl/templateCPP/"\
-                              + f
+                              " " + templatedir + f
                         run = run.split(' ')
                         ret = Cog().main(run)
                         if ret != 0:
