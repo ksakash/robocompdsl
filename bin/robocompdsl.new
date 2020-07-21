@@ -58,7 +58,6 @@ def generateROSHeaders(idslFile, outputPath, comp, includeDirectories):
                 print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                 # Call cog
                 rostype = 'ros'
-                # templatedir = os.path.join(dirname, "../share/robocompdsl/templateCPP") + '/'
                 run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + \
                         " -D structName=" + t['name'] +" -D theIDSL="+idslFile+ " -D rostype=" + \
                         rostype+" -o " + ofile + " " + templatedir + f
@@ -188,7 +187,6 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                 print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                 # Call cog
                 rostype = 'ros2'
-                # templatedir = os.path.join(dirname, "../share/robocompdsl/templateCPP") + '/'
                 run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + \
                       " -D structName=" + t['name'] + " -D theIDSL=" + idslFile + " -D rostype=" + \
                       rostype + " -o " + ofile + " " + templatedir + f
@@ -216,7 +214,6 @@ def generateROS2Headers(idslFile, outputPath, comp, includeDirectories):
                     print('Generating', ofile, ' (servant for', idslFile.split('.')[0].lower() + ')')
                     # Call cog
                     rostype = 'ros2'
-                    # templatedir = os.path.join(dirname, "../share/robocompdsl/templateCPP") + '/'
                     run = "cog.py -z -d" + ' -D theIDSLPaths='+ '#'.join(includeDirectories) + \
                           " -D methodName=" + interface['methods'][method]['name'] + " -D theIDSL=" \
                           + idslFile+" -D rostype="+rostype+" -o " + ofile + " " + \
@@ -477,16 +474,17 @@ def main():
                      'src/specificmonitor.cpp', 'src/genericworker.h.cog.new', \
                      'src/genericworker.cpp.cog.new', 'src/specificworker.h.cog.new', \
                      'src/specificworker.cpp.cog.new', 'src/mainUI.ui', 'package.xml']
+
             specificFiles = ['src/specificworker.h.cog.new', 'src/specificworker.cpp.cog.new', \
                              'src/CMakeListsSpecific.txt', 'src/mainUI.ui', 'src/specificmonitor.h', \
                              'src/specificmonitor.cpp', 'README.md', 'etc/config']
 
             for f in files:
-                if (f == 'package.xml') and component['usingROS2']:
-                    ofile = outputPath + '/' + f
-                    # ifile = "../share/robocompdsl/templateCPP/" + f
-                    ifile = templatedir + f
-                    os.system("cp " + ifile + " " + ofile)
+                if (f == 'package.xml'):
+                    if component['usingROS2']:
+                        ofile = outputPath + '/' + f
+                        ifile = templatedir + f
+                        os.system("cp " + ifile + " " + ofile)
                     continue
 
                 ofile = outputPath + '/' + f.split('.cog')[0]
@@ -496,7 +494,6 @@ def main():
                     new_existing_files[os.path.abspath(ofile)] = os.path.abspath(ofile)+'.new'
                     ofile += '.new'
 
-                # ifile = "../share/robocompdsl/templateCPP/" + f
                 ifile = templatedir + f
 
                 if f != 'src/mainUI.ui' or component['gui'] is not None:
