@@ -7,14 +7,33 @@ robocompdsl tool with ros2 support
 - clone the repo
 $ git clone https://github.com/ksakash/robocompdsl
 
-- create an alias to use the script from this repo instead of the one installed by robocomp
+- bin/robocompdsl is the new script that supports ros1 and ros2
+
+- in order to use this script from any where in your machine you can create an alias to use the
+  script from this repo (bin/robocompdsl) instead of the one installed by robocomp
+
 $ vim ~/.bashrc
-$ alias temprobocompdsl=/path/to/your/bin/robocompdsl.new
+$ alias temprobocompdsl=/path/to/your/bin/robocompdsl
 
 # USAGE
 
-- the working of temprobocompdsl is same as robocompdsl
+- to try out the new script you have two options:
+  1. use the alias
+        or
+  2. use the script in the repo
 
-- ex: to create a component
-$ temprobocompdsl component.cdsl .
+- let's use the script in the repo and demonstrate a couple of examples. in the example dir there
+  are different subdirs which contains a .cdsl file to create a component, each with different
+  middleware
 
+- to create a component enter the dir where the .cdsl file is and follow these steps:
+  $ ../../bin/robocompdsl component.cdsl .
+  $ mkdir build
+  $ cd build
+  $ cmake .. && make
+
+  NOTE: 1. before building ros1 component: $ source /opt/melodic/setup.bash
+        2. before building ros2 component: $ source /opt/eloquent/setup.bash
+                                   $ export CMAKE_PREFIX_PATH=$AMENT_PREFIX_PATH:$CMAKE_PREFIX_PATH
+
+- if the component builds without a compilation error then it was a success
