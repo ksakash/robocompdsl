@@ -2,6 +2,10 @@
 
 robocompdsl tool with ros2 support
 
+# DEPENDENCY
+
+robocomp, ros-melodic, ros-eloquent
+
 # INSTALLATION
 
 - clone the repo
