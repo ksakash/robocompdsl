@@ -1,4 +1,3 @@
-/*
 [[[cog
 
 import sys
@@ -17,12 +16,13 @@ def Z():
 def TAB():
 	cog.out('<TABHERE>')
 
-
 from dsl_parsers.dsl_factory import DSLFactory
 from dsl_parsers.parsing_utils import getNameNumber, communicationIsIce, IDSLPool, containsMap
+
 includeDirectories = theIDSLPaths.split('#')
 component = DSLFactory().from_file(theCDSL, include_directories=includeDirectories)
 sm = DSLFactory().from_file(component['statemachine'])
+
 if sm is None:
     component['statemachine'] = None
 if component is None:
@@ -30,10 +30,9 @@ if component is None:
 	sys.exit(1)
 
 pool = IDSLPool(theIDSLs, includeDirectories)
-rosTypes = pool.getRosTypes ()
-
 ]]]
 [[[end]]]
+/*
  *    Copyright (C)
 [[[cog
 A()
@@ -59,10 +58,9 @@ Z()
  *    You should have received a copy of the GNU General Public License
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include "genericworker.h"
-/**
-* \brief Default constructor
-*/
+
 [[[cog
 if component['language'].lower() == 'cpp':
 	cog.outl("GenericWorker::GenericWorker(MapPrx& mprx) :")
@@ -80,7 +78,6 @@ else:
 ]]]
 [[[end]]]
 {
-
 [[[cog
 if sm is not None:
     codaddTransition = ""
@@ -231,135 +228,25 @@ for name, num in getNameNumber(component['publishes']):
 	cont = cont + 1
 ]]]
 [[[end]]]
-
 	mutex = new QMutex(QMutex::Recursive);
 
 [[[cog
-def isPub(method):
-	returnTypeVoid = (method['return'] == 'void')
-	paramWithOut = False
-	moreThanOne = not (len(method['params']) == 1)
-	for param in method['params']:
-		if param['decorator'] == 'out':
-			paramWithOut = True
-			break
-	return returnTypeVoid and (not paramWithOut) and (not moreThanOne)
+for interface in component['publishes']:
+    if not communicationIsIce (interface):
+        cog.outl("<TABHERE>" + interface[0].lower() + "_proxy = new Publisher" + interface[0] + " ();")
 
-if component['usingROS'] or component['usingROS2']:
-	#INICIALIZANDO SUBSCRIBERS
-	for imp in component['subscribesTo']:
-		nname = imp
-		while type(nname) != type(''):
-			nname = nname[0]
-		module = pool.moduleProviding(nname)
-		if module == None:
-			print ('\nCan\'t find module providing', nname, '\n')
-			sys.exit(-1)
-		if not communicationIsIce(imp) and imp[1] == 'ros':
-			"""
-			for interface in module['interfaces']:
-				if interface['name'] == nname:
-					for mname in interface['methods']:
-						s = "\""+mname+"\""
-						if nname in component['iceInterfaces']:
-							cog.outl("<TABHERE>"+nname+"_"+mname+" = node.subscribe("+s+", 1000, &GenericWorker::ROS"+mname+", this);")
-						else:
-							cog.outl("<TABHERE>"+nname+"_"+mname+" = node.subscribe("+s+", 1000, &GenericWorker::"+mname+", this);")
-			"""
-			sub_map = dict()
-			for t in module['types']:
-				if t['type'] != 'dictionary':
-					d_type = ''
-					n = t['name'].split('::')[-1]
-					sub_map[n] = dict()
-					sub_map[n]['func_name'] = "cb_" + n
-					if '::' in t['name']:
-						d_type = t['name'].replace('::', 'ROS::')
-					else:
-						d_type = module['name'] + 'ROS::' + t['name']
-					sub_map[n]['data_type'] = d_type
-					cog.outl("<TABHERE>// sub_"+n+" = node.subscribe(\"<topic_name>\", 1000, &GenericWorker::"+"cb_" + n + ", this);")
+for interface in component['subscribesTo']:
+    if not communicationIsIce (interface):
+        cog.outl ("<TABHERE>" + interface[0].lower() + "_proxy = new Subscriber" + interface[0] + " ();")
 
-			for interface in module['interfaces']:
-				for method in interface['methods']:
-					m = interface['methods'][method]
-					if isPub (m):
-						p = m['params'][0]
-						p_name = m['name']
-						sub_map[p_name] = dict()
-						if p['type'] in ('float','int'):
-							sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()+"32"
-						elif p['type'] in ('uint8','uint16','uint32','uint64'):
-							sub_map[p_name]['data_type'] = "std_msgs::UInt"+p['type'].split('t')[1]+"32"
-						elif p['type'] in rosTypes:
-							sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()
-						elif '::' in p['type']:
-							sub_map[p_name]['data_type'] = p['type'].replace('::', 'ROS::')
-						else:
-							sub_map[p_name]['data_type'] = module['name'] + 'ROS::' + p['type']
-						sub_map[p_name]['func_name'] = "cb_" + p_name
-						cog.outl("<TABHERE>sub_"+p_name+" = node.subscribe(\""+interface['name']+"\", 1000, &GenericWorker::"+"cb_" + p_name + ", this);")
+for interface in component['requires']:
+    if not communicationIsIce (interface):
+        cog.outl ("<TABHERE>" + interface[0].lower() + "_proxy = new Client" + interface[0] + " ();")
 
-		if component['usingROS2']:
-			for interface in module['interfaces']:
-				if interface['name'] == imp[0]:
-					cog.outl("<TABHERE>"+interface['name'].lower()+"_proxy = new Subscriber"+interface['name']+"();")
+for interface in component['implements']:
+    if not communicationIsIce (interface):
+        cog.outl ("<TABHERE>" + interface[0].lower() + "_proxy = new Server" + interface[0] + " ();")
 
-	#INICIALIZANDO IMPLEMENTS
-	for imp in component['implements']:
-		nname = imp
-		while type(nname) != type(''):
-			nname = nname[0]
-		module = pool.moduleProviding(nname)
-		if module == None:
-			print ('\nCan\'t find module providing', nname, '\n')
-			sys.exit(-1)
-		if not communicationIsIce(imp) and imp[1] == 'ros':
-			for interface in module['interfaces']:
-				if interface['name'] == nname:
-					for mname in interface['methods']:
-						method = interface['methods'][mname]
-						if not containsMap (method, module):
-							s = "\""+mname+"\""
-							if nname in component['iceInterfaces']:
-								cog.outl("<TABHERE>"+nname+"_"+mname+" = node.advertiseService("+s+", &GenericWorker::ROS"+mname+", this);")
-							else:
-								cog.outl("<TABHERE>"+nname+"_"+mname+" = node.advertiseService("+s+", &GenericWorker::"+mname+", this);")
-
-		if not communicationIsIce(imp) and imp[1] == 'ros2':
-			for interface in module['interfaces']:
-				if interface['name'] == nname:
-					cog.outl("<TABHERE>"+interface['name'].lower()+"_proxy = new Server"+interface['name']+" ();")
-
-if 'publishes' in component:
-	for publish in component['publishes']:
-		pubs = publish
-		while type(pubs) != type(''):
-			pubs = pubs[0]
-		if not communicationIsIce(publish):
-			if pubs in component['iceInterfaces']:
-				if component['usingROS']:
-					cog.outl("<TABHERE>"+pubs.lower()+"_rosproxy = new Publisher"+pubs+"(&node);")
-				else:
-					cog.outl("<TABHERE>"+pubs.lower()+"_rosproxy = new Publisher"+pubs+"();")
-			else:
-				if component['usingROS']:
-					cog.outl("<TABHERE>"+pubs.lower()+"_proxy = new Publisher"+pubs+"(&node);")
-				else:
-					cog.outl("<TABHERE>"+pubs.lower()+"_proxy = new Publisher"+pubs+"();")
-if 'requires' in component:
-	for require in component['requires']:
-		req = require
-		while type(req) != type(''):
-			req = req[0]
-		if not communicationIsIce(require):
-			if req in component['iceInterfaces']:
-				cog.outl("<TABHERE>"+req.lower()+"_rosproxy = new ServiceClient"+req+"(&node);")
-			else:
-				if require[1] == 'ros':
-					cog.outl("<TABHERE>"+req.lower()+"_proxy = new ServiceClient"+req+"(&node);")
-				else:
-					cog.outl("<TABHERE>"+req.lower()+"_proxy = new Client"+req+"();")
 if component['gui'] is not None:
 	cog.outl("""<TABHERE>#ifdef USE_QTGUI
 		setupUi(this);
@@ -376,22 +263,17 @@ if component['statemachine'] is None:
 
 }
 
-/**
-* \brief Default destructor
-*/
 GenericWorker::~GenericWorker()
 {
 
 }
+
 void GenericWorker::killYourSelf()
 {
 	rDebug("Killing myself");
 	emit kill();
 }
-/**
-* \brief Change compute period
-* @param per Period in ms
-*/
+
 void GenericWorker::setPeriod(int p)
 {
 	rDebug("Period changed"+QString::number(p));

@@ -1,4 +1,3 @@
-/*
 [[[cog
 
 import sys
@@ -18,19 +17,18 @@ def TAB():
 	cog.out('<TABHERE>')
 
 from dsl_parsers.dsl_factory import DSLFactory
-from dsl_parsers.parsing_utils import communicationIsIce, isAGM1Agent, isAGM2Agent, isAGM2AgentROS, \
-									  IDSLPool, containsMap
+from dsl_parsers.parsing_utils import communicationIsIce, isAGM1Agent, isAGM2Agent, \
+                                      isAGM2AgentROS, IDSLPool, containsMap
 
 includeDirectories = theIDSLPaths.split('#')
 component = DSLFactory().from_file(theCDSL, include_directories=includeDirectories)
 sm = DSLFactory().from_file(component['statemachine'])
+
 if sm is None:
     component['statemachine'] = None
 if component is None:
 	print('Can\'t locate', theCDSLs)
 	sys.exit(1)
-
-
 
 pool = IDSLPool(theIDSLs, includeDirectories)
 rosTypes = pool.getRosTypes()
@@ -103,9 +101,9 @@ def bodyCodeFromName(name, component):
 
 	return bodyCode
 
-
 ]]]
 [[[end]]]
+/*
  *    Copyright (C)
 [[[cog
 A()
@@ -131,11 +129,10 @@ Z()
  *    You should have received a copy of the GNU General Public License
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include "specificworker.h"
 
-/**
-* \brief Default constructor
-*/
+// brief Default constructor
 [[[cog
     if component['language'].lower() == 'cpp':
         cog.outl("SpecificWorker::SpecificWorker(MapPrx& mprx) : GenericWorker(mprx)")
@@ -171,9 +168,7 @@ except:
 [[[end]]]
 }
 
-/**
-* \brief Default destructor
-*/
+// brief Default destructor
 SpecificWorker::~SpecificWorker()
 {
 	std::cout << "Destroying SpecificWorker" << std::endl;
@@ -187,16 +182,15 @@ if sm is not None and sm['machine']['default']:
 bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 {
 [[[cog
-cog.outl("""//       THE FOLLOWING IS JUST AN EXAMPLE
-//	To use innerModelPath parameter you should uncomment specificmonitor.cpp readConfig method content
-//	try
-//	{
-//		RoboCompCommonBehavior::Parameter par = params.at("InnerModelPath");
-//		std::string innermodel_path = par.value;
-//		innerModel = std::make_shared(innermodel_path);
-//	}
-//	catch(const std::exception &e) { qFatal("Error reading config params"); }
-
+cog.outl("""// THE FOLLOWING IS JUST AN EXAMPLE
+// To use innerModelPath parameter you should uncomment specificmonitor.cpp readConfig method content
+// try
+// {
+//     RoboCompCommonBehavior::Parameter par = params.at("InnerModelPath");
+//     std::string innermodel_path = par.value;
+//     innerModel = std::make_shared(innermodel_path);
+// }
+// catch(const std::exception &e) { qFatal("Error reading config params"); }
 """)
 if component['innermodelviewer']:
 	cog.outl("#ifdef USE_QTGUI")
@@ -205,7 +199,6 @@ if component['innermodelviewer']:
 	cog.outl("#endif")
 ]]]
 [[[end]]]
-
 [[[cog
 try:
 	if isAGM1Agent(component):
@@ -221,19 +214,15 @@ try:
 		cog.outl("<TABHERE>}")
 	elif isAGM2Agent(component):
 		cog.outl("// TODO: Here we should ask the DSR for the current model for initialization purposes.")
-
 except:
 	pass
 ]]]
 [[[end]]]
-
 [[[cog
 if sm is not None:
     cog.outl("<TABHERE>" + sm['machine']['name'] + ".start();")
 ]]]
 [[[end]]]
-
-
 	return true;
 }
 
@@ -245,29 +234,25 @@ void SpecificWorker::initialize(int period)
 [[[cog
 if sm is not None and sm['machine']['default']:
     cog.outl("<TABHERE>emit this->t_initialize_to_compute();")
-    ]]]
+]]]
 [[[end]]]
-
 }
-
 [[[cog
 if (sm is not None and sm['machine']['default'] is True) or component['statemachine'] is None:
     cog.outl("void SpecificWorker::compute()")
     cog.outl("{")
-    cog.outl("//computeCODE")
-    cog.outl("//QMutexLocker locker(mutex);")
-    cog.outl("//<TABHERE>try")
-    cog.outl("//<TABHERE>{")
-    cog.outl("//<TABHERE><TABHERE>camera_proxy->getYImage(0,img, cState, bState);")
-    cog.outl("//<TABHERE><TABHERE>memcpy(image_gray.data, &img[0], m_width*m_height*sizeof(uchar));")
-    cog.outl("//<TABHERE><TABHERE>searchTags(image_gray);")
-    cog.outl("//<TABHERE>}")
-    cog.outl("//<TABHERE>catch(const Ice::Exception &e)")
-    cog.outl("//<TABHERE>{")
-    cog.outl("//<TABHERE><TABHERE>std::cout << \"Error reading from Camera\" << e << std::endl;")
-    cog.outl("//<TABHERE>}")
-    if component['usingROS'] == True:
-        cog.outl("<TABHERE>ros::spinOnce();")
+    cog.outl("<TABHERE>// computeCODE")
+    cog.outl("<TABHERE>// QMutexLocker locker(mutex);")
+    cog.outl("<TABHERE>// try")
+    cog.outl("<TABHERE>// {")
+    cog.outl("<TABHERE>// <TABHERE>camera_proxy->getYImage(0,img, cState, bState);")
+    cog.outl("<TABHERE>// <TABHERE>memcpy(image_gray.data, &img[0], m_width*m_height*sizeof(uchar));")
+    cog.outl("<TABHERE>// <TABHERE>searchTags(image_gray);")
+    cog.outl("<TABHERE>// }")
+    cog.outl("<TABHERE>// catch(const Ice::Exception &e)")
+    cog.outl("<TABHERE>// {")
+    cog.outl("<TABHERE>// <TABHERE>std::cout << \"Error reading from Camera\" << e << std::endl;")
+    cog.outl("<TABHERE>// }")
     if component['innermodelviewer']:
         cog.outl("#ifdef USE_QTGUI")
         cog.outl("<TABHERE>if (innerModelViewer) innerModelViewer->update();")
@@ -276,7 +261,6 @@ if (sm is not None and sm['machine']['default'] is True) or component['statemach
     cog.outl("}")
 ]]]
 [[[end]]]
-
 [[[cog
 if sm is not None:
 	sm_implementation = "\n"
@@ -300,167 +284,77 @@ if sm is not None:
 			if substates['contents']['finalstate'] is not None:
 				sm_implementation += "void SpecificWorker::sm_" + substates['contents']['finalstate'] + "()\n{\n<TABHERE>std::cout<<\"Entered state "+substates['contents']['finalstate']+"\"<<std::endl;\n}\n\n"
 	cog.outl(sm_implementation)
-
-
 ]]]
 [[[end]]]
-
-
-
 [[[cog
 
-def isPub(method):
-	returnTypeVoid = (method['return'] == 'void')
-	paramWithOut = False
-	moreThanOne = not (len(method['params']) == 1)
-	for param in method['params']:
-		if param['decorator'] == 'out':
-			paramWithOut = True
-			break
-	return returnTypeVoid and (not paramWithOut) and (not moreThanOne)
-
-
 if 'implements' in component:
-	for impa in component['implements']:
-		if type(impa) == str:
-			imp = impa
-		else:
-			imp = impa[0]
-		module = pool.moduleProviding(imp)
-		for interface in module['interfaces']:
-			if interface['name'] == imp:
-				for mname in interface['methods']:
-					method = interface['methods'][mname]
-					paramStrA = ''
-					bodyCode = bodyCodeFromName(method['name'], component)
-					if communicationIsIce(impa):
-						for p in method['params']:
-							# delim
-							if paramStrA == '': delim = ''
-							else: delim = ', '
-							# decorator
-							ampersand = '&'
-							if p['decorator'] == 'out':
-								const = ''
-							else:
-								if component['language'].lower() == "cpp":
-									const = 'const '
-								else:
-									const = ''
-									ampersand = ''
-								if p['type'].lower() in ['int', '::ice::int', 'float', '::ice::float']:
-									ampersand = ''
-							# STR
-							paramStrA += delim + const + p['type'] + ' ' + ampersand + p['name']
-						cog.outl(method['return'] + ' SpecificWorker::' +interface['name'] + "_" + method['name'] + '(' + paramStrA + ")\n{\n//implementCODE\n"+bodyCode+"\n}\n")
-					elif impa[1] == 'ros':
-						if not containsMap (method, module):
-							paramStrA = module['name'] +"ROS::"+method['name']+"::Request &req, "+module['name']+"ROS::"+method['name']+"::Response &res"
-							if imp in component['iceInterfaces']:
-								cog.outl('bool SpecificWorker::ROS' + method['name'] + '(' + paramStrA + ")\n{\n//implementCODE\n"+bodyCode+"\n}\n")
-							else:
-								cog.outl('bool SpecificWorker::' + method['name'] + '(' + paramStrA + ")\n{\n//implementCODE\n"+bodyCode+"\n}\n")
+    for implement in component['implements']:
+        interface_name = implement[0]
+        module = pool.moduleProviding(interface_name)
+        if module == None:
+            print ('\nCan\'t find module providing', interface_name, '\n')
+            sys.exit(-1)
+        for interface in module['interfaces']:
+            if interface['name'] == interface_name:
+                for mname in interface['methods']:
+                    method = interface['methods'][mname]
+                    paramStrA = ''
+                    bodyCode = bodyCodeFromName(method['name'], component)
+                    if communicationIsIce(implement):
+                        for p in method['params']:
+                            # delim
+                            if paramStrA == '': delim = ''
+                            else: delim = ', '
+                            # decorator
+                            ampersand = '&'
+                            if p['decorator'] == 'out':
+                                const = ''
+                            else:
+                                if component['language'].lower() == "cpp":
+                                    const = 'const '
+                                else:
+                                    const = ''
+                                    ampersand = ''
+                                if p['type'].lower() in ['int', '::ice::int', 'float', '::ice::float']:
+                                    ampersand = ''
+                            # STR
+                            paramStrA += delim + const + p['type'] + ' ' + ampersand + p['name']
+                        cog.outl(method['return'] + ' SpecificWorker::' +interface['name'] + "_" + method['name'] + '(' + paramStrA + ")\n{\n//implementCODE\n"+bodyCode+"\n}\n")
 
 if 'subscribesTo' in component:
-	for impa in component['subscribesTo']:
-		if type(impa) == str:
-			imp = impa
-		else:
-			imp = impa[0]
-		module = pool.moduleProviding(imp)
-		if module == None:
-			print ('\nCan\'t find module providing', imp, '\n')
-			sys.exit(-1)
-		for interface in module['interfaces']:
-			if interface['name'] == imp:
-				for mname in interface['methods']:
-					method = interface['methods'][mname]
-					paramStrA = ''
-					bodyCode = bodyCodeFromName(method['name'], component)
-					if communicationIsIce(impa):
-						for p in method['params']:
-							# delim
-							if paramStrA == '': delim = ''
-							else: delim = ', '
-							# decorator
-							ampersand = '&'
-							if p['decorator'] == 'out':
-								const = ''
-							else:
-								if component['language'].lower() == "cpp":
-									const = 'const '
-								else:
-									const = ''
-									ampersand = ''
-								if p['type'].lower() in ['int', '::ice::int', 'float', '::ice::float']:
-									ampersand = ''
-							# STR
-							paramStrA += delim + const + p['type'] + ' ' + ampersand + p['name']
-						cog.outl("//SUBSCRIPTION to "+ method['name'] + " method from "+ interface['name'] + " interface")
-						cog.outl(method['return'] + ' SpecificWorker::' +interface['name'] + "_" + method['name'] + '(' + paramStrA + ")\n{\n//subscribesToCODE\n"+bodyCode+"\n}\n")
-					"""
-					else:
-						for p in method['params']:
-							# delim
-							if paramStrA == '': delim = ''
-							else: delim = ', '
-							# decorator
-							ampersand = '&'
-							if p['decorator'] == 'out':
-								const = ''
-							else:
-								const = 'const '
-								ampersand = ''
-							if p['type'] in ('float','int'):
-								p['type'] = "std_msgs::"+p['type'].capitalize()+"32"
-							elif p['type'] in ('uint8','uint16','uint32','uint64'):
-								p['type'] = "std_msgs::UInt"+p['type'].split('t')[1]
-							elif p['type'] in rosTypes:
-								p['type'] = "std_msgs::"+p['type'].capitalize()
-							elif not '::' in p['type']:
-								p['type'] = module['name']+"ROS::"+p['type']
-							# STR
-							paramStrA += delim + p['type'] + ' ' + p['name']
-						if imp in component['iceInterfaces']:
-							cog.outl('void SpecificWorker::ROS' + method['name'] + '(' + paramStrA + ")\n{\n//subscribesToCODE\n"+bodyCode+"\n}\n")
-						else:
-							cog.outl('void SpecificWorker::' + method['name'] + '(' + paramStrA + ")\n{\n//subscribesToCODE\n"+bodyCode+"\n}\n")
-					"""
-				if not communicationIsIce(impa) and impa[1] == 'ros':
-					sub_map = dict()
-					for t in module['types']:
-						if t['type'] != 'dictionary':
-							d_type = ''
-							n = t['name'].split('::')[-1]
-							sub_map[n] = dict()
-							sub_map[n]['func_name'] = "cb_" + n
-							if '::' in t['name']:
-								d_type = t['name'].replace('::', 'ROS::')
-							else:
-								d_type = module['name'] + 'ROS::' + t['name']
-							sub_map[n]['data_type'] = d_type
-							cog.outl("void SpecificWorker::cb_"+n+"(" + d_type + " ros_msg) {\n//implementCODE\n}\n")
-
-					for interface in module['interfaces']:
-						for method in interface['methods']:
-							m = interface['methods'][method]
-							if isPub (m):
-								p = m['params'][0]
-								p_name = m['name']
-								sub_map[p_name] = dict()
-								if p['type'] in ('float','int'):
-									sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()+"32"
-								elif p['type'] in ('uint8','uint16','uint32','uint64'):
-									sub_map[p_name]['data_type'] = "std_msgs::UInt"+p['type'].split('t')[1]+"32"
-								elif p['type'] in rosTypes:
-									sub_map[p_name]['data_type'] = "std_msgs::"+p['type'].capitalize()
-								elif '::' in p['type']:
-									sub_map[p_name]['data_type'] = p['type'].replace('::', 'ROS::')
-								else:
-									sub_map[p_name]['data_type'] = module['name'] + 'ROS::' + p['type']
-								sub_map[p_name]['func_name'] = "cb_" + p_name
-								cog.outl("void SpecificWorker::cb_"+p_name+"("+sub_map[p_name]['data_type']+" ros_msg) {\n//implementCODE\n}\n")
-
+    for implement in component['subscribesTo']:
+        interface_name = implement[0]
+        module = pool.moduleProviding(interface_name)
+        if module == None:
+            print ('\nCan\'t find module providing', interface_name, '\n')
+            sys.exit(-1)
+        for interface in module['interfaces']:
+            if interface['name'] == interface_name:
+                for mname in interface['methods']:
+                    method = interface['methods'][mname]
+                    paramStrA = ''
+                    bodyCode = bodyCodeFromName(method['name'], component)
+                    if communicationIsIce(implement):
+                        for p in method['params']:
+                            # delim
+                            if paramStrA == '': delim = ''
+                            else: delim = ', '
+                            # decorator
+                            ampersand = '&'
+                            if p['decorator'] == 'out':
+                                const = ''
+                            else:
+                                if component['language'].lower() == "cpp":
+                                    const = 'const '
+                                else:
+                                    const = ''
+                                    ampersand = ''
+                                if p['type'].lower() in ['int', '::ice::int', 'float', '::ice::float']:
+                                    ampersand = ''
+                            # STR
+                            paramStrA += delim + const + p['type'] + ' ' + ampersand + p['name']
+                        cog.outl(method['return'] + ' SpecificWorker::' +interface['name'] + "_" + method['name'] + '(' + paramStrA + ")\n{\n//subscribesToCODE\n"+bodyCode+"\n}\n")
 ]]]
 [[[end]]]
 
