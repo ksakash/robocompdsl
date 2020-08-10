@@ -36,8 +36,8 @@ $ alias temprobocompdsl=/path/to/your/bin/robocompdsl
   $ cd build
   $ cmake .. && make
 
-  NOTE: 1. before building ros1 component: $ source /opt/melodic/setup.bash
-        2. before building ros2 component: $ source /opt/eloquent/setup.bash
+  NOTE: 1. before creating ros1 component: $ source /opt/melodic/setup.bash
+        2. before creating ros2 component: $ source /opt/eloquent/setup.bash
                                    $ export CMAKE_PREFIX_PATH=$AMENT_PREFIX_PATH:$CMAKE_PREFIX_PATH
 
 - if the component builds without a compilation error then it was a success
