@@ -4,7 +4,7 @@ robocompdsl tool with ros2 support
 
 # DEPENDENCY
 
-robocomp, ros-melodic, ros-eloquent
+robocomp, ros-melodic, ros-eloquent, stringcase (python)
 
 # INSTALLATION
 

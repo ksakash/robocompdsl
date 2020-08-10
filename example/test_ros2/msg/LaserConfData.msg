@@ -1,0 +1,13 @@
+string driver
+string device
+int32 static_conf
+int32 max_measures
+int32 max_degrees
+int32 max_range
+int32 min_range
+int32 ini_range
+int32 end_range
+int32 cluster
+int32 sample_rate
+float32 angle_res
+float32 angle_ini

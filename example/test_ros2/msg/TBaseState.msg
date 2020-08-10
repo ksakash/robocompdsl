@@ -1,0 +1,10 @@
+float32 x
+float32 corrected_x
+float32 z
+float32 corrected_z
+float32 alpha
+float32 corrected_alpha
+float32 adv_vx
+float32 adv_vz
+float32 rot_v
+bool is_moving
