@@ -1,7 +1,23 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>my_first_comp</name>
+[[[cog
+import cog
+def A():
+    cog.out('<@@<')
+def Z():
+    cog.out('>@@>')
+def TAB():
+    cog.out('<TABHERE>')
+def SPACE(i=0):
+    s = ''
+    if i>0:
+        s = str(i)
+    cog.out('<S'+s+'>')
+
+cog.outl ("  <name>"+theCompName+"</name>")
+]]]
+[[[end]]]
   <version>0.10.0</version>
   <description>Custom messages for real-time pendulum control.</description>
 

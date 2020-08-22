@@ -473,18 +473,26 @@ def main():
                      'src/genericmonitor.cpp', 'src/config.h', 'src/specificmonitor.h', \
                      'src/specificmonitor.cpp', 'src/genericworker.h.cog', \
                      'src/genericworker.cpp.cog', 'src/specificworker.h.cog', \
-                     'src/specificworker.cpp.cog', 'src/mainUI.ui', 'package.xml']
+                     'src/specificworker.cpp.cog', 'src/mainUI.ui', 'package.xml.cog']
 
             specificFiles = ['src/specificworker.h.cog', 'src/specificworker.cpp.cog', \
                              'src/CMakeListsSpecific.txt', 'src/mainUI.ui', 'src/specificmonitor.h', \
                              'src/specificmonitor.cpp', 'README.md', 'etc/config']
 
             for f in files:
-                if (f == 'package.xml'):
+                if (f == 'package.xml.cog'):
                     if component['usingROS2']:
-                        ofile = outputPath + '/' + f
+                        ofile = outputPath + '/' + f.split('.cog')[0]
                         ifile = templatedir + f
-                        os.system("cp " + ifile + " " + ofile)
+                        print ('Generating', ofile)
+                        comp_name = sc.snakecase(component['name'])
+                        run = "cog.py -z -d -D theCompName=" + comp_name + " -o " + ofile + " " + ifile
+                        run = run.split(' ')
+                        ret = Cog().main(run)
+                        if ret != 0:
+                            print('ERROR')
+                            sys.exit(-1)
+                        replaceTagsInFile(ofile)
                     continue
 
                 ofile = outputPath + '/' + f.split('.cog')[0]
